@@ -6,6 +6,7 @@ val kotest_version = "5.8.1"
 
 plugins {
     kotlin("jvm") version "1.9.23"
+    kotlin("plugin.serialization") version "1.9.23"
     application
 }
 
@@ -13,7 +14,7 @@ group = "com.laundryflow"
 version = "1.0.0"
 
 application {
-    mainClass.set("ApplicationKt")
+    mainClass.set("com.laundryflow.ApplicationKt")
 }
 
 repositories {

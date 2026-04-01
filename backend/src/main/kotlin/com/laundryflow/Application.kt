@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import com.laundryflow.routes.*
 import java.io.File
 
 fun main() {
@@ -24,7 +25,7 @@ fun main() {
 fun Application.module() {
     // 1. Initialize SQLite Database
     val dbPath = "laundryflow.db"
-    Database.connect("jdbc:sqlite:\$dbPath", driver = "org.sqlite.JDBC")
+    Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     
     // Auto-migrate tables
     transaction {
@@ -59,5 +60,8 @@ fun Application.module() {
         get("/") {
             call.respondText("LaundryFlow API is running")
         }
+        
+        customerRoutes()
+        orderRoutes()
     }
 }
