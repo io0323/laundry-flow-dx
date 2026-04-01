@@ -43,19 +43,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Bashコマンド
-- npm run build: プロジェクトビルド
-- npm run typecheck: 型チェック実行
-- npm run test: テスト実行
-- npm run lint: ESLint実行
-
-
-## コーディングルール
-- 小さな差分を優先。依頼されていないリファクタリングは禁止
-- 変更したロジックには必ずテストを追加/修正
-- アクセシビリティ: フォームコントロールにはラベル必須
-
-
 ## プロジェクト一覧
 
 
