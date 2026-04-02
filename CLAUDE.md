@@ -1,11 +1,9 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# CLAUDE.md オンボーティング
 
 ## 基本情報
 
-- GitHub: io0323
-- X: @io0323_dev
+- GitHub : io0323
+- X : @io0323_dev
 
 ## 回答スタイル
 

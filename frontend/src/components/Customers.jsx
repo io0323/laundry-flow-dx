@@ -4,6 +4,7 @@ import { UserPlus, Search } from 'lucide-react';
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({
         name: '', phoneNumber: '', address: '', membershipType: 'Regular'
@@ -26,14 +27,30 @@ const Customers = () => {
         loadCustomers();
     };
 
+    const filteredCustomers = customers.filter(c => 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        c.phoneNumber.includes(searchTerm)
+    );
+
     return (
         <div>
             <header className="header">
                 <h1>Customers</h1>
-                <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)}>
-                    <UserPlus size={18} />
-                    New Customer
-                </button>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div className="search-box">
+                        <Search size={18} className="search-icon" />
+                        <input 
+                            type="text" 
+                            placeholder="Name or Phone..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)}>
+                        <UserPlus size={18} />
+                        New Customer
+                    </button>
+                </div>
             </header>
 
             {isAdding && (
@@ -95,7 +112,7 @@ const Customers = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {customers.map(c => (
+                        {filteredCustomers.map(c => (
                             <tr key={c.id}>
                                 <td>{c.id}</td>
                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
@@ -110,14 +127,42 @@ const Customers = () => {
                         ))}
                     </tbody>
                 </table>
-                {customers.length === 0 && (
+                {filteredCustomers.length === 0 && (
                     <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                        No customers found. Add your first customer!
+                        {customers.length === 0 ? "No customers found. Add your first customer!" : "No matches found for your search."}
                     </div>
                 )}
             </div>
+
+            <style>{`
+                .search-box {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+                .search-icon {
+                    position: absolute;
+                    left: 12px;
+                    color: #94a3b8;
+                    pointer-events: none;
+                }
+                .search-box input {
+                    padding: 0.6rem 1rem 0.6rem 2.5rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    font-size: 0.875rem;
+                    background-color: white;
+                    transition: border-color 0.2s;
+                    min-width: 250px;
+                }
+                .search-box input:focus {
+                    outline: none;
+                    border-color: #6366f1;
+                }
+            `}</style>
         </div>
     );
 };
 
 export default Customers;
+
