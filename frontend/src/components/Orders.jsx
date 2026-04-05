@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { ShoppingCart, RefreshCw, Search, Filter } from 'lucide-react';
+import { ShoppingCart, RefreshCw, Search, Filter, Zap, Droplets, Trash2, Eye } from 'lucide-react';
+import OrderDetailsModal from './OrderDetailsModal';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
 
     useEffect(() => {
         loadOrders();
@@ -19,13 +21,26 @@ const Orders = () => {
         setIsLoading(false);
     };
 
-    const handleStatusUpdate = async (id, currentStatus) => {
+    const handleStatusUpdate = async (e, id, currentStatus) => {
+        e.stopPropagation();
         const statuses = ['Received', 'Washing', 'Finishing', 'WaitingForPickup', 'Completed'];
         const currentIndex = statuses.indexOf(currentStatus);
         const nextStatus = statuses[(currentIndex + 1) % statuses.length];
         
         await api.updateOrderStatus(id, nextStatus);
         loadOrders();
+    };
+
+    const handleDelete = async (e, id) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this order?')) {
+            await api.deleteOrder(id);
+            loadOrders();
+        }
+    };
+
+    const handleRowClick = (id) => {
+        setSelectedOrderId(id);
     };
 
     const filteredOrders = orders.filter(o => {
@@ -72,7 +87,7 @@ const Orders = () => {
             </header>
 
             <div className="card table-container">
-                <table>
+                <table className="orders-table">
                     <thead>
                         <tr>
                             <th>Order ID</th>
@@ -85,8 +100,14 @@ const Orders = () => {
                     </thead>
                     <tbody>
                         {filteredOrders.map(o => (
-                            <tr key={o.id}>
-                                <td style={{ fontWeight: 600 }}>#{o.id}</td>
+                            <tr key={o.id} onClick={() => handleRowClick(o.id)} className="order-row">
+                                <td style={{ fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        #{o.id}
+                                        {o.hasRush && <Zap size={14} fill="#f59e0b" color="#f59e0b" title="Rush Order" />}
+                                        {o.hasStainRemoval && <Droplets size={14} fill="#3b82f6" color="#3b82f6" title="Stain Removal" />}
+                                    </div>
+                                </td>
                                 <td style={{ color: '#475569' }}>{o.customerName}</td>
                                 <td>{o.targetDate}</td>
                                 <td style={{ fontWeight: 700 }}>¥{o.totalAmount.toLocaleString()}</td>
@@ -96,13 +117,31 @@ const Orders = () => {
                                     </span>
                                 </td>
                                 <td>
-                                    <button 
-                                        className="btn btn-primary" 
-                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
-                                        onClick={() => handleStatusUpdate(o.id, o.status)}
-                                    >
-                                        Update Status
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button 
+                                            className="btn btn-primary" 
+                                            style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
+                                            onClick={(e) => handleStatusUpdate(e, o.id, o.status)}
+                                        >
+                                            Update Status
+                                        </button>
+                                        <button 
+                                            className="btn" 
+                                            style={{ color: '#64748b', padding: '0.4rem' }}
+                                            onClick={(e) => { e.stopPropagation(); handleRowClick(o.id); }}
+                                            title="View Details"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                        <button 
+                                            className="btn" 
+                                            style={{ color: '#ef4444', padding: '0.4rem' }}
+                                            onClick={(e) => handleDelete(e, o.id)}
+                                            title="Delete Order"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -114,6 +153,11 @@ const Orders = () => {
                     </div>
                 )}
             </div>
+
+            <OrderDetailsModal 
+                orderId={selectedOrderId} 
+                onClose={() => setSelectedOrderId(null)} 
+            />
             
             <style>{`
                 @keyframes spin {
@@ -154,10 +198,16 @@ const Orders = () => {
                     background-size: 0.65rem auto;
                     padding-right: 2.5rem;
                 }
+                .order-row {
+                    cursor: pointer;
+                    transition: background-color 0.15s;
+                }
+                .order-row:hover {
+                    background-color: #f8fafc;
+                }
             `}</style>
         </div>
     );
 };
 
 export default Orders;
-
