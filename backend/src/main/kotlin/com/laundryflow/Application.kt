@@ -63,5 +63,6 @@ fun Application.module() {
         
         customerRoutes()
         orderRoutes()
+        dashboardRoutes()
     }
 }

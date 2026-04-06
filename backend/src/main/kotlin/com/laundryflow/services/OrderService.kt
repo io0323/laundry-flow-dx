@@ -40,9 +40,15 @@ class OrderService {
     }
     
     /**
-     * Calculates the default receive date (3 days later).
+     * Calculates the default receive date.
+     * - Regular: 3 days later.
+     * - Rush: 1 day later.
      */
-    fun calculateDefaultTargetDate(receivedDate: LocalDate): LocalDate {
-        return receivedDate.plusDays(3)
+    fun calculateDefaultTargetDate(receivedDate: LocalDate, rush: Boolean = false): LocalDate {
+        return if (rush) {
+            receivedDate.plusDays(1)
+        } else {
+            receivedDate.plusDays(3)
+        }
     }
 }

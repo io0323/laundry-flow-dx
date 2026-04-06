@@ -40,9 +40,15 @@ class OrderServiceTest : StringSpec({
         service.calculateItemPrice("シャツ", 3, true, true) shouldBe 3120
     }
 
-    "Verify default target date is exactly 3 days after receive date" {
+    "Verify default target date (Regular) is exactly 3 days after receive date" {
         val received = LocalDate.of(2026, 4, 1)
-        val target = service.calculateDefaultTargetDate(received)
+        val target = service.calculateDefaultTargetDate(received, false)
         target shouldBe LocalDate.of(2026, 4, 4)
+    }
+
+    "Verify default target date (Rush) is exactly 1 day after receive date" {
+        val received = LocalDate.of(2026, 4, 1)
+        val target = service.calculateDefaultTargetDate(received, true)
+        target shouldBe LocalDate.of(2026, 4, 2)
     }
 })

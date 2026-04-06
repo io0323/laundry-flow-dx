@@ -15,36 +15,20 @@ const Dashboard = () => {
 
     useEffect(() => {
         const loadDashboard = async () => {
-            const [orders, customers] = await Promise.all([
-                api.getOrders(),
-                api.getCustomers()
-            ]);
-            
-            const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-            
-            setStats({
-                totalOrders: orders.length,
-                activeOrders: orders.filter(o => o.status !== 'Completed').length,
-                completedOrders: orders.filter(o => o.status === 'Completed').length,
-                totalCustomers: customers.length,
-                totalRevenue: totalRevenue
-            });
-            
-            // Sort orders by id desc for "recent" (assuming higher id is more recent)
-            const sortedOrders = [...orders].sort((a, b) => (b.id || 0) - (a.id || 0));
-            setRecentOrders(sortedOrders.slice(0, 5));
-
-            // Calculate top customers
-            const customerStats = customers.map(c => {
-                const customerOrders = orders.filter(o => o.customerId === c.id);
-                return {
-                    ...c,
-                    orderCount: customerOrders.length,
-                    totalSpent: customerOrders.reduce((sum, o) => sum + o.totalAmount, 0)
-                };
-            }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-            
-            setTopCustomers(customerStats);
+            try {
+                const data = await api.getDashboardStats();
+                setStats({
+                    totalOrders: data.totalOrders,
+                    activeOrders: data.activeOrders,
+                    completedOrders: data.completedOrders,
+                    totalCustomers: data.totalCustomers,
+                    totalRevenue: data.totalRevenue
+                });
+                setRecentOrders(data.recentOrders);
+                setTopCustomers(data.topCustomers);
+            } catch (error) {
+                console.error("Failed to load dashboard stats", error);
+            }
         };
         loadDashboard();
     }, []);

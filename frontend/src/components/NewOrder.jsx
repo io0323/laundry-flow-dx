@@ -14,11 +14,27 @@ const NewOrder = ({ onComplete }) => {
     const [customers, setCustomers] = useState([]);
     const [selectedCustomerId, setSelectedCustomerId] = useState('');
     const [items, setItems] = useState([{ category: 'シャツ', quantity: 1, stainRemoval: false, rush: false, subtotalPrice: 300 }]);
-    const [targetDate, setTargetDate] = useState(new Date(Date.now() + 3*24*60*60*100).toISOString().split('T')[0]);
+    const [targetDate, setTargetDate] = useState('');
+    const [isCustomTargetDate, setIsCustomTargetDate] = useState(false);
 
     useEffect(() => {
         api.getCustomers().then(setCustomers);
     }, []);
+
+    useEffect(() => {
+        if (isCustomTargetDate) return;
+
+        const hasRush = items.some(item => item.rush);
+        const daysToAdd = hasRush ? 1 : 3;
+        const date = new Date();
+        date.setDate(date.getDate() + daysToAdd);
+        
+        // Use local date formatted as YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        setTargetDate(`${year}-${month}-${day}`);
+    }, [items, isCustomTargetDate]);
 
     const calculateItemPrice = (item) => {
         const basePrice = CATEGORIES.find(c => c.name === item.category)?.price || 0;
@@ -88,7 +104,10 @@ const NewOrder = ({ onComplete }) => {
                             <input 
                                 type="date" 
                                 value={targetDate} 
-                                onChange={e => setTargetDate(e.target.value)} 
+                                onChange={e => {
+                                    setTargetDate(e.target.value);
+                                    setIsCustomTargetDate(true);
+                                }} 
                             />
                         </div>
                     </div>
