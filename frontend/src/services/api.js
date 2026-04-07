@@ -49,4 +49,10 @@ export const api = {
     });
     return res.ok;
   },
+  async deleteOrder(id) {
+    const res = await fetch(`${API_BASE_URL}/orders/${id}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  },
 };

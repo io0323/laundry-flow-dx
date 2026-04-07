@@ -120,5 +120,26 @@ fun Route.orderRoutes() {
             }
             call.respond(HttpStatusCode.OK)
         }
+
+        delete("{id}") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+                return@delete
+            }
+
+            transaction {
+                // Delete items first to satisfy foreign key constraint if any
+                OrderItems.deleteWhere { OrderItems.orderId eq id }
+                val deletedCount = Orders.deleteWhere { Orders.id eq id }
+                if (deletedCount == 0) {
+                    null // Will return 404 below
+                } else {
+                    true
+                }
+            }?.let {
+                call.respond(HttpStatusCode.NoContent)
+            } ?: call.respond(HttpStatusCode.NotFound)
+        }
     }
 }

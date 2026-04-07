@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { ShoppingCart, RefreshCw, Search, Filter } from 'lucide-react';
+import { ShoppingCw, RefreshCw, Search, Filter, Eye, Trash2 } from 'lucide-react';
+import OrderDetailsModal from './OrderDetailsModal';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
 
     useEffect(() => {
         loadOrders();
@@ -14,8 +16,12 @@ const Orders = () => {
 
     const loadOrders = async () => {
         setIsLoading(true);
-        const data = await api.getOrders();
-        setOrders(data);
+        try {
+            const data = await api.getOrders();
+            setOrders(data);
+        } catch (error) {
+            console.error("Failed to load orders", error);
+        }
         setIsLoading(false);
     };
 
@@ -26,6 +32,17 @@ const Orders = () => {
         
         await api.updateOrderStatus(id, nextStatus);
         loadOrders();
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm(`Are you sure you want to delete Order #${id}?`)) {
+            const success = await api.deleteOrder(id);
+            if (success) {
+                loadOrders();
+            } else {
+                alert("Failed to delete order.");
+            }
+        }
     };
 
     const filteredOrders = orders.filter(o => {
@@ -96,13 +113,29 @@ const Orders = () => {
                                     </span>
                                 </td>
                                 <td>
-                                    <button 
-                                        className="btn btn-primary" 
-                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
-                                        onClick={() => handleStatusUpdate(o.id, o.status)}
-                                    >
-                                        Update Status
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button 
+                                            className="btn btn-primary" 
+                                            style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
+                                            onClick={() => handleStatusUpdate(o.id, o.status)}
+                                        >
+                                            Next Step
+                                        </button>
+                                        <button 
+                                            className="btn btn-outline" 
+                                            title="View Details"
+                                            onClick={() => setSelectedOrderId(o.id)}
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                        <button 
+                                            className="btn btn-outline btn-danger-hover" 
+                                            title="Delete Order"
+                                            onClick={() => handleDelete(o.id)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -114,6 +147,13 @@ const Orders = () => {
                     </div>
                 )}
             </div>
+
+            {selectedOrderId && (
+                <OrderDetailsModal 
+                    orderId={selectedOrderId} 
+                    onClose={() => setSelectedOrderId(null)} 
+                />
+            )}
             
             <style>{`
                 @keyframes spin {
@@ -153,6 +193,23 @@ const Orders = () => {
                     background-position: right 1rem top 50%;
                     background-size: 0.65rem auto;
                     padding-right: 2.5rem;
+                }
+                .btn-outline {
+                    background: transparent;
+                    border: 1px solid #e2e8f0;
+                    color: #64748b;
+                    padding: 0.4rem;
+                    border-radius: 6px;
+                }
+                .btn-outline:hover {
+                    background: #f8fafc;
+                    border-color: #cbd5e1;
+                    color: #1e293b;
+                }
+                .btn-danger-hover:hover {
+                    background: #fff1f2;
+                    border-color: #fca5a5;
+                    color: #e11d48;
                 }
             `}</style>
         </div>
