@@ -16,8 +16,12 @@ const Orders = () => {
 
     const loadOrders = async () => {
         setIsLoading(true);
-        const data = await api.getOrders();
-        setOrders(data);
+        try {
+            const data = await api.getOrders();
+            setOrders(data);
+        } catch (error) {
+            console.error("Failed to load orders", error);
+        }
         setIsLoading(false);
     };
 
