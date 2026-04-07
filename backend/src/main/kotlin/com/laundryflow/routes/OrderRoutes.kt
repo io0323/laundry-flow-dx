@@ -20,17 +20,25 @@ fun Route.orderRoutes() {
     route("/api/orders") {
         get {
             val orders = transaction {
-                (Orders innerJoin Customers).selectAll().map {
-                    Order(
-                        id = it[Orders.id].value,
-                        customerId = it[Orders.customerId].value,
-                        customerName = it[Customers.name],
-                        receivedDate = it[Orders.receivedDate].toString(),
-                        targetDate = it[Orders.targetDate].toString(),
-                        status = it[Orders.status],
-                        totalAmount = it[Orders.totalAmount]
-                    )
-                }
+                (Orders innerJoin Customers).selectAll()
+                    .orderBy(Orders.id to SortOrder.DESC)
+                    .map {
+                        val orderId = it[Orders.id].value
+                        val hasRush = OrderItems.select { OrderItems.orderId eq orderId and (OrderItems.rush eq true) }.count() > 0
+                        val hasStainRemoval = OrderItems.select { OrderItems.orderId eq orderId and (OrderItems.stainRemoval eq true) }.count() > 0
+
+                        Order(
+                            id = orderId,
+                            customerId = it[Orders.customerId].value,
+                            customerName = it[Customers.name],
+                            receivedDate = it[Orders.receivedDate].toString(),
+                            targetDate = it[Orders.targetDate].toString(),
+                            status = it[Orders.status],
+                            totalAmount = it[Orders.totalAmount],
+                            hasRush = hasRush,
+                            hasStainRemoval = hasStainRemoval
+                        )
+                    }
             }
             call.respond(orders)
         }
@@ -66,6 +74,8 @@ fun Route.orderRoutes() {
                     targetDate = orderRow[Orders.targetDate].toString(),
                     status = orderRow[Orders.status],
                     totalAmount = orderRow[Orders.totalAmount],
+                    hasRush = items.any { it.rush },
+                    hasStainRemoval = items.any { it.stainRemoval },
                     items = items
                 )
             }
@@ -127,19 +137,12 @@ fun Route.orderRoutes() {
                 call.respond(HttpStatusCode.BadRequest, "Invalid ID")
                 return@delete
             }
-
+            
             transaction {
-                // Delete items first to satisfy foreign key constraint if any
                 OrderItems.deleteWhere { OrderItems.orderId eq id }
-                val deletedCount = Orders.deleteWhere { Orders.id eq id }
-                if (deletedCount == 0) {
-                    null // Will return 404 below
-                } else {
-                    true
-                }
-            }?.let {
-                call.respond(HttpStatusCode.NoContent)
-            } ?: call.respond(HttpStatusCode.NotFound)
+                Orders.deleteWhere { Orders.id eq id }
+            }
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 }

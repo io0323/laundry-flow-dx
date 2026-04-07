@@ -11,6 +11,8 @@ data class Order(
     val targetDate: String,           // LocalDate as ISO-8601 string
     val status: String,
     val totalAmount: Int,
+    val hasRush: Boolean = false,
+    val hasStainRemoval: Boolean = false,
     val items: List<OrderItem> = emptyList()
 )
 
