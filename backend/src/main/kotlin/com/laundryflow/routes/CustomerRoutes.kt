@@ -66,5 +66,28 @@ fun Route.customerRoutes() {
             }
             call.respond(HttpStatusCode.Created, customer.copy(id = id))
         }
+
+        delete("{id}") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+                return@delete
+            }
+
+            try {
+                val deletedCount = transaction {
+                    Customers.deleteWhere { Customers.id eq id }
+                }
+                
+                if (deletedCount == 0) {
+                    call.respond(HttpStatusCode.NotFound)
+                } else {
+                    call.respond(HttpStatusCode.NoContent)
+                }
+            } catch (e: Exception) {
+                // This usually happens if there's a foreign key constraint violation (e.g. customer has orders)
+                call.respond(HttpStatusCode.Conflict, "Cannot delete customer. They might have existing orders.")
+            }
+        }
     }
 }

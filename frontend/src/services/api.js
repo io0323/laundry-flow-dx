@@ -18,6 +18,12 @@ export const api = {
     });
     return res.json();
   },
+  async deleteCustomer(id) {
+    const res = await fetch(`${API_BASE_URL}/customers/${id}`, {
+      method: 'DELETE',
+    });
+    return res;
+  },
   // Dashboard
   async getDashboardStats() {
     const res = await fetch(`${API_BASE_URL}/dashboard/stats`);
