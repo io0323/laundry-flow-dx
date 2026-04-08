@@ -15,8 +15,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 fun Route.orderRoutes() {
-    val orderService = OrderService()
-    
     route("/api/orders") {
         get {
             val orders = transaction {
