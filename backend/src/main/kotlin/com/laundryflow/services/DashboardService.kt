@@ -13,6 +13,20 @@ class DashboardService {
         val totalCustomers = Customers.selectAll().count().toInt()
         
         val totalRevenue = Orders.slice(Orders.totalAmount.sum()).selectAll().singleOrNull()?.getOrNull(Orders.totalAmount.sum()) ?: 0
+        val averageOrderValue = if (totalOrders > 0) totalRevenue / totalOrders else 0
+
+        val categoryDistribution = OrderItems
+            .slice(OrderItems.category, OrderItems.id.count())
+            .selectAll()
+            .groupBy(OrderItems.category)
+            .orderBy(OrderItems.id.count() to SortOrder.DESC)
+            .limit(5)
+            .map {
+                CategoryStat(
+                    category = it[OrderItems.category],
+                    count = it[OrderItems.id.count()].toInt()
+                )
+            }
         
         val recentOrders = (Orders innerJoin Customers)
             .selectAll()
@@ -52,8 +66,10 @@ class DashboardService {
             completedOrders = completedOrders,
             totalCustomers = totalCustomers,
             totalRevenue = totalRevenue,
+            averageOrderValue = averageOrderValue,
             recentOrders = recentOrders,
-            topCustomers = topCustomers
+            topCustomers = topCustomers,
+            categoryDistribution = categoryDistribution
         )
     }
 }

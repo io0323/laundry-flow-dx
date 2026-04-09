@@ -9,8 +9,16 @@ data class DashboardStats(
     val completedOrders: Int,
     val totalCustomers: Int,
     val totalRevenue: Int,
+    val averageOrderValue: Int,
     val recentOrders: List<Order>,
-    val topCustomers: List<CustomerStats>
+    val topCustomers: List<CustomerStats>,
+    val categoryDistribution: List<CategoryStat>
+)
+
+@Serializable
+data class CategoryStat(
+    val category: String,
+    val count: Int
 )
 
 @Serializable
