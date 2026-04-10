@@ -12,9 +12,10 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 fun Route.orderRoutes() {
+    val orderService = OrderService()
+
     route("/api/orders") {
         get {
             val orders = transaction {
@@ -86,29 +87,56 @@ fun Route.orderRoutes() {
         }
 
         post {
-            val orderReq = call.receive<Order>()
+            val orderReq = try {
+                call.receive<Order>()
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid order format")
+                return@post
+            }
+
+            // Validation: Customer must exist
+            val customerExists = transaction {
+                Customers.select { Customers.id eq orderReq.customerId }.count() > 0
+            }
+            if (!customerExists) {
+                call.respond(HttpStatusCode.BadRequest, "Customer does not exist")
+                return@post
+            }
+
+            // Validation: Items must not be empty
+            if (orderReq.items.isEmpty()) {
+                call.respond(HttpStatusCode.BadRequest, "Order must have at least one item")
+                return@post
+            }
+
+            // Recalculate total amount and item subtotals on the backend
+            val calculatedTotalAmount = orderService.calculateTotalOrderPrice(orderReq.items)
+
             val newOrderId = transaction {
                 val ordId = Orders.insertAndGetId {
                     it[customerId] = orderReq.customerId
                     it[receivedDate] = LocalDateTime.now()
                     it[targetDate] = LocalDate.parse(orderReq.targetDate)
                     it[status] = "Received"
-                    it[totalAmount] = orderReq.totalAmount
+                    it[totalAmount] = calculatedTotalAmount
                 }.value
                 
                 orderReq.items.forEach { item ->
+                    val calculatedSubtotal = orderService.calculateItemPrice(
+                        item.category, item.quantity, item.stainRemoval, item.rush
+                    )
                     OrderItems.insert {
                         it[orderId] = ordId
                         it[category] = item.category
                         it[quantity] = item.quantity
                         it[stainRemoval] = item.stainRemoval
                         it[rush] = item.rush
-                        it[subtotalPrice] = item.subtotalPrice
+                        it[subtotalPrice] = calculatedSubtotal
                     }
                 }
                 ordId
             }
-            call.respond(HttpStatusCode.Created, mapOf("id" to newOrderId))
+            call.respond(HttpStatusCode.Created, mapOf("id" to newOrderId, "totalAmount" to calculatedTotalAmount))
         }
 
         patch("{id}/status") {

@@ -1,5 +1,6 @@
 package com.laundryflow.services
 
+import com.laundryflow.models.OrderItem
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
@@ -38,6 +39,14 @@ class OrderServiceTest : StringSpec({
 
     "Calculate price with BOTH stain and rush and multiple units ((シャツ 300 + 500) * 3 * 1.3 = 3120)" {
         service.calculateItemPrice("シャツ", 3, true, true) shouldBe 3120
+    }
+
+    "Calculate total order price for multiple items" {
+        val items = listOf(
+            OrderItem(category = "シャツ", quantity = 2, stainRemoval = true, rush = false, subtotalPrice = 0), // (300+500)*2 = 1600
+            OrderItem(category = "スーツ", quantity = 1, stainRemoval = false, rush = true, subtotalPrice = 0)  // 1500 * 1.3 = 1950
+        )
+        service.calculateTotalOrderPrice(items) shouldBe (1600 + 1950)
     }
 
     "Verify default target date (Regular) is exactly 3 days after receive date" {

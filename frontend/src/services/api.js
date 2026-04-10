@@ -45,6 +45,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
     });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to create order: ${res.status}`);
+    }
     return res.json();
   },
   async updateOrderStatus(id, status) {
