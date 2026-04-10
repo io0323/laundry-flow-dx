@@ -67,14 +67,19 @@ const NewOrder = ({ onComplete }) => {
         e.preventDefault();
         if (!selectedCustomerId) return alert('Please select a customer');
         
-        await api.createOrder({
-            customerId: parseInt(selectedCustomerId),
-            targetDate: targetDate,
-            status: 'Received',
-            totalAmount: totalAmount,
-            items: items
-        });
-        onComplete();
+        try {
+            await api.createOrder({
+                customerId: parseInt(selectedCustomerId),
+                targetDate: targetDate,
+                status: 'Received',
+                totalAmount: totalAmount,
+                items: items
+            });
+            onComplete();
+        } catch (error) {
+            console.error(error);
+            alert(error.message || 'Failed to create order. Please try again.');
+        }
     };
 
     return (
