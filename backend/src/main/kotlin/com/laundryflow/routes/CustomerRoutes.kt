@@ -67,6 +67,30 @@ fun Route.customerRoutes() {
             call.respond(HttpStatusCode.Created, customer.copy(id = id))
         }
 
+        put("{id}") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+                return@put
+            }
+
+            val customer = call.receive<Customer>()
+            val updatedCount = transaction {
+                Customers.update({ Customers.id eq id }) {
+                    it[name] = customer.name
+                    it[phoneNumber] = customer.phoneNumber
+                    it[address] = customer.address
+                    it[membershipType] = customer.membershipType
+                }
+            }
+
+            if (updatedCount == 0) {
+                call.respond(HttpStatusCode.NotFound)
+            } else {
+                call.respond(HttpStatusCode.OK, customer.copy(id = id))
+            }
+        }
+
         delete("{id}") {
             val id = call.parameters["id"]?.toIntOrNull()
             if (id == null) {
