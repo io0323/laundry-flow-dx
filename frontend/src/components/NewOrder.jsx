@@ -36,25 +36,49 @@ const NewOrder = ({ onComplete }) => {
         setTargetDate(`${year}-${month}-${day}`);
     }, [items, isCustomTargetDate]);
 
-    const calculateItemPrice = (item) => {
+    const getSelectedCustomer = () => {
+        return customers.find(c => c.id === parseInt(selectedCustomerId));
+    };
+
+    const calculateItemPrice = (item, membershipType = 'Regular') => {
         const basePrice = CATEGORIES.find(c => c.name === item.category)?.price || 0;
         let unitPrice = basePrice;
         if (item.stainRemoval) unitPrice += 500;
         let subtotal = unitPrice * item.quantity;
         if (item.rush) subtotal = Math.floor(subtotal * 1.3);
+        
+        // Apply Premium discount
+        if (membershipType === 'Premium') {
+            subtotal = Math.floor(subtotal * 0.9);
+        }
+        
         return subtotal;
     };
 
     const updateItem = (index, updates) => {
         const newItems = [...items];
         const updatedItem = { ...newItems[index], ...updates };
-        updatedItem.subtotalPrice = calculateItemPrice(updatedItem);
+        const membershipType = getSelectedCustomer()?.membershipType || 'Regular';
+        updatedItem.subtotalPrice = calculateItemPrice(updatedItem, membershipType);
         newItems[index] = updatedItem;
         setItems(newItems);
     };
 
+    // Recalculate all items when customer changes to reflect membership discount
+    useEffect(() => {
+        const membershipType = getSelectedCustomer()?.membershipType || 'Regular';
+        const newItems = items.map(item => ({
+            ...item,
+            subtotalPrice: calculateItemPrice(item, membershipType)
+        }));
+        setItems(newItems);
+    }, [selectedCustomerId]);
+
     const addItem = () => {
-        setItems([...items, { category: 'シャツ', quantity: 1, stainRemoval: false, rush: false, subtotalPrice: 300 }]);
+        const membershipType = getSelectedCustomer()?.membershipType || 'Regular';
+        const newItem = { category: 'シャツ', quantity: 1, stainRemoval: false, rush: false };
+        newItem.subtotalPrice = calculateItemPrice(newItem, membershipType);
+        setItems([...items, newItem]);
     };
 
     const removeItem = (index) => {
@@ -188,7 +212,23 @@ const NewOrder = ({ onComplete }) => {
                     <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Total Amount</span>
-                            <h2 style={{ fontSize: '2rem', color: '#1e293b' }}>¥{totalAmount.toLocaleString()}</h2>
+                            <h2 style={{ fontSize: '2rem', color: '#1e293b' }}>
+                                ¥{totalAmount.toLocaleString()}
+                                {getSelectedCustomer()?.membershipType === 'Premium' && (
+                                    <span style={{ 
+                                        fontSize: '0.875rem', 
+                                        color: '#059669', 
+                                        background: '#ecfdf5', 
+                                        padding: '0.25rem 0.75rem', 
+                                        borderRadius: '9999px',
+                                        marginLeft: '1rem',
+                                        verticalAlign: 'middle',
+                                        fontWeight: 600
+                                    }}>
+                                        Premium Discount (10% OFF) Applied
+                                    </span>
+                                )}
+                            </h2>
                         </div>
                         <button type="submit" className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
                             <ShoppingCart size={20} />

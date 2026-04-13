@@ -19,6 +19,7 @@ class OrderService {
         )
         const val STAIN_REMOVAL_ADDITION = 500
         const val RUSH_MULTIPLIER = 1.3
+        const val PREMIUM_DISCOUNT = 0.9
     }
 
     /**
@@ -160,10 +161,11 @@ class OrderService {
      * - Base price according to category.
      * - +500 per item if Stain Removal is selected.
      * - Then apply Rush order (+30% and truncated to Integer).
+     * - Finally apply Membership discount if applicable.
      * 
-     * Rule: 加算してから急ぎ割増を適用 (Add stain removal first before rush multiplier).
+     * Rule: 加算してから急ぎ割増を適用し、最後に会員割引を適用
      */
-    fun calculateItemPrice(category: String, quantity: Int, stainRemoval: Boolean, rush: Boolean): Int {
+    fun calculateItemPrice(category: String, quantity: Int, stainRemoval: Boolean, rush: Boolean, membershipType: String = "Regular"): Int {
         val basePrice = CATEGORY_PRICES[category] ?: 0
         
         var unitPrice = basePrice
@@ -179,6 +181,11 @@ class OrderService {
         if (rush) {
             subtotal = (subtotal * RUSH_MULTIPLIER).toInt()
         }
+
+        // "会員割引: Premium会員は10%引き（端数切り捨て）"
+        if (membershipType == "Premium") {
+            subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
+        }
         
         return subtotal
     }
@@ -186,9 +193,9 @@ class OrderService {
     /**
      * Calculates the total price for an entire order.
      */
-    fun calculateTotalOrderPrice(items: List<OrderItem>): Int {
+    fun calculateTotalOrderPrice(items: List<OrderItem>, membershipType: String = "Regular"): Int {
         return items.sumOf { item ->
-            calculateItemPrice(item.category, item.quantity, item.stainRemoval, item.rush)
+            calculateItemPrice(item.category, item.quantity, item.stainRemoval, item.rush, membershipType)
         }
     }
     
