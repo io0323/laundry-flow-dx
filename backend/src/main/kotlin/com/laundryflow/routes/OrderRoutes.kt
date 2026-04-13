@@ -94,11 +94,13 @@ fun Route.orderRoutes() {
                 return@post
             }
 
-            // Validation: Customer must exist
-            val customerExists = transaction {
-                Customers.select { Customers.id eq orderReq.customerId }.count() > 0
+            // Validation: Customer must exist and get their membership level
+            val membershipType = transaction {
+                Customers.select { Customers.id eq orderReq.customerId }
+                    .map { it[Customers.membershipType] }
+                    .firstOrNull()
             }
-            if (!customerExists) {
+            if (membershipType == null) {
                 call.respond(HttpStatusCode.BadRequest, "Customer does not exist")
                 return@post
             }
@@ -109,8 +111,8 @@ fun Route.orderRoutes() {
                 return@post
             }
 
-            // Recalculate total amount and item subtotals on the backend
-            val calculatedTotalAmount = orderService.calculateTotalOrderPrice(orderReq.items)
+            // Recalculate total amount and item subtotals on the backend using membership discount
+            val calculatedTotalAmount = orderService.calculateTotalOrderPrice(orderReq.items, membershipType)
 
             val newOrderId = transaction {
                 val ordId = Orders.insertAndGetId {
@@ -123,7 +125,7 @@ fun Route.orderRoutes() {
                 
                 orderReq.items.forEach { item ->
                     val calculatedSubtotal = orderService.calculateItemPrice(
-                        item.category, item.quantity, item.stainRemoval, item.rush
+                        item.category, item.quantity, item.stainRemoval, item.rush, membershipType
                     )
                     OrderItems.insert {
                         it[orderId] = ordId

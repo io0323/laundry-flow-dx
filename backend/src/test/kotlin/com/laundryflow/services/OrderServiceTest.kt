@@ -60,4 +60,25 @@ class OrderServiceTest : StringSpec({
         val target = service.calculateDefaultTargetDate(received, true)
         target shouldBe LocalDate.of(2026, 4, 2)
     }
+
+    "Premium discount: (シャツ 300) * 0.9 = 270" {
+        service.calculateItemPrice("シャツ", 1, false, false, "Premium") shouldBe 270
+    }
+
+    "Premium discount with multiple units: (シャツ 300 * 2) * 0.9 = 540" {
+        service.calculateItemPrice("シャツ", 2, false, false, "Premium") shouldBe 540
+    }
+
+    "Premium discount with BOTH stain and rush: ((毛布 2500 + 500) * 1 * 1.3) * 0.9 = 3510" {
+        // (2500+500) * 1.3 = 3900, then 3900 * 0.9 = 3510
+        service.calculateItemPrice("毛布", 1, true, true, "Premium") shouldBe 3510
+    }
+
+    "Total order price with Premium discount for multiple items" {
+        val items = listOf(
+            OrderItem(category = "シャツ", quantity = 2, stainRemoval = true, rush = false, subtotalPrice = 0), // (300+500)*2 = 1600 -> Premium: 1440
+            OrderItem(category = "スーツ", quantity = 1, stainRemoval = false, rush = true, subtotalPrice = 0)  // 1500 * 1.3 = 1950 -> Premium: 1755
+        )
+        service.calculateTotalOrderPrice(items, "Premium") shouldBe (1440 + 1755)
+    }
 })
