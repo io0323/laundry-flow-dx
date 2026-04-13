@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { UserPlus, Search, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Trash2, Pencil, X } from 'lucide-react';
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [newCustomer, setNewCustomer] = useState({
         name: '', phoneNumber: '', address: '', membershipType: 'Regular'
     });
@@ -19,12 +20,35 @@ const Customers = () => {
         setCustomers(data);
     };
 
-    const handleCreate = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        await api.createCustomer(newCustomer);
+        if (editingId) {
+            await api.updateCustomer(editingId, newCustomer);
+        } else {
+            await api.createCustomer(newCustomer);
+        }
         setIsAdding(false);
+        setEditingId(null);
         setNewCustomer({ name: '', phoneNumber: '', address: '', membershipType: 'Regular' });
         loadCustomers();
+    };
+
+    const handleEdit = (customer) => {
+        setEditingId(customer.id);
+        setNewCustomer({
+            name: customer.name,
+            phoneNumber: customer.phoneNumber,
+            address: customer.address,
+            membershipType: customer.membershipType
+        });
+        setIsAdding(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancel = () => {
+        setIsAdding(false);
+        setEditingId(null);
+        setNewCustomer({ name: '', phoneNumber: '', address: '', membershipType: 'Regular' });
     };
 
     const handleDelete = async (id, name) => {
@@ -73,8 +97,11 @@ const Customers = () => {
             </header>
 
             {isAdding && (
-                <div className="card" style={{ marginBottom: '2rem' }}>
-                    <form onSubmit={handleCreate}>
+                <div className="card" style={{ marginBottom: '2rem', border: editingId ? '1px solid #6366f1' : 'none' }}>
+                    <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600 }}>
+                        {editingId ? 'Edit Customer' : 'Add New Customer'}
+                    </h3>
+                    <form onSubmit={handleSubmit}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div className="input-group">
                                 <label>Name</label>
@@ -112,8 +139,10 @@ const Customers = () => {
                             </select>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            <button type="submit" className="btn btn-primary">Save Customer</button>
-                            <button type="button" className="btn" onClick={() => setIsAdding(false)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary">
+                                {editingId ? 'Update Customer' : 'Save Customer'}
+                            </button>
+                            <button type="button" className="btn" onClick={handleCancel}>Cancel</button>
                         </div>
                     </form>
                 </div>
@@ -144,14 +173,24 @@ const Customers = () => {
                                     </span>
                                 </td>
                                 <td>
-                                    <button 
-                                        className="btn btn-outline btn-danger-hover" 
-                                        title="Delete Customer"
-                                        onClick={() => handleDelete(c.id, c.name)}
-                                        style={{ padding: '0.4rem' }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button 
+                                            className="btn btn-outline" 
+                                            title="Edit Customer"
+                                            onClick={() => handleEdit(c)}
+                                            style={{ padding: '0.4rem' }}
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button 
+                                            className="btn btn-outline btn-danger-hover" 
+                                            title="Delete Customer"
+                                            onClick={() => handleDelete(c.id, c.name)}
+                                            style={{ padding: '0.4rem' }}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

@@ -10,6 +10,14 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/customers/${id}`);
     return res.json();
   },
+  async updateCustomer(id, customer) {
+    const res = await fetch(`${API_BASE_URL}/customers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customer),
+    });
+    return res.json();
+  },
   async createCustomer(customer) {
     const res = await fetch(`${API_BASE_URL}/customers`, {
       method: 'POST',
