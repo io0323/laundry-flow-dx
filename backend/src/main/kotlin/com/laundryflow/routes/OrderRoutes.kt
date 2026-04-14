@@ -42,21 +42,22 @@ fun Route.orderRoutes() {
                 return@post
             }
 
-            // Validation: Customer must exist and get their membership level
-            val membershipType = customerService.getMembershipType(orderReq.customerId)
-            if (membershipType == null) {
-                call.respond(HttpStatusCode.BadRequest, "Customer does not exist")
-                return@post
+            try {
+                val newOrderId = orderService.createOrder(orderReq)
+                val createdOrder = orderService.getOrderById(newOrderId)
+                if (createdOrder != null) {
+                    call.respond(HttpStatusCode.Created, mapOf(
+                        "id" to createdOrder.id,
+                        "totalAmount" to createdOrder.totalAmount
+                    ))
+                } else {
+                    call.respond(HttpStatusCode.InternalServerError, "Failed to retrieve created order")
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, e.message ?: "Validation failed")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to create order: ${e.message}")
             }
-
-            // Validation: Items must not be empty
-            if (orderReq.items.isEmpty()) {
-                call.respond(HttpStatusCode.BadRequest, "Order must have at least one item")
-                return@post
-            }
-
-            val (newOrderId, totalAmount) = orderService.createOrder(orderReq, membershipType)
-            call.respond(HttpStatusCode.Created, mapOf("id" to newOrderId, "totalAmount" to totalAmount))
         }
 
         patch("{id}/status") {
@@ -72,10 +73,15 @@ fun Route.orderRoutes() {
                 call.respond(HttpStatusCode.BadRequest, "Invalid status update format")
                 return@patch
             }
-            val newStatus = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest)
+
+            val newStatus = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest, "Missing 'status' field")
             
-            orderService.updateOrderStatus(id, newStatus)
-            call.respond(HttpStatusCode.OK)
+            try {
+                orderService.updateOrderStatus(id, newStatus)
+                call.respond(HttpStatusCode.OK)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to update status")
+            }
         }
 
         delete("{id}") {
@@ -85,8 +91,12 @@ fun Route.orderRoutes() {
                 return@delete
             }
             
-            orderService.deleteOrder(id)
-            call.respond(HttpStatusCode.NoContent)
+            try {
+                orderService.deleteOrder(id)
+                call.respond(HttpStatusCode.NoContent)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to delete order")
+            }
         }
     }
 }
