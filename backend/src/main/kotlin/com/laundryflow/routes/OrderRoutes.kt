@@ -1,6 +1,7 @@
 package com.laundryflow.routes
 
 import com.laundryflow.models.*
+import com.laundryflow.services.CustomerService
 import com.laundryflow.services.OrderService
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -10,6 +11,7 @@ import io.ktor.server.routing.*
 
 fun Route.orderRoutes() {
     val orderService = OrderService()
+    val customerService = CustomerService()
 
     route("/api/orders") {
         get {
