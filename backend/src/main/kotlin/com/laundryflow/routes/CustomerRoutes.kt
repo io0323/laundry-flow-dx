@@ -1,30 +1,19 @@
 package com.laundryflow.routes
 
 import com.laundryflow.models.Customer
-import com.laundryflow.models.Customers
+import com.laundryflow.services.CustomerService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.customerRoutes() {
+    val customerService = CustomerService()
+
     route("/api/customers") {
         get {
-            val customers = transaction {
-                Customers.selectAll().map {
-                    Customer(
-                        id = it[Customers.id].value,
-                        name = it[Customers.name],
-                        phoneNumber = it[Customers.phoneNumber],
-                        address = it[Customers.address],
-                        membershipType = it[Customers.membershipType]
-                    )
-                }
-            }
+            val customers = customerService.getAllCustomers()
             call.respond(customers)
         }
 
@@ -35,18 +24,7 @@ fun Route.customerRoutes() {
                 return@get
             }
             
-            val customer = transaction {
-                Customers.select { Customers.id eq id }.map {
-                    Customer(
-                        id = it[Customers.id].value,
-                        name = it[Customers.name],
-                        phoneNumber = it[Customers.phoneNumber],
-                        address = it[Customers.address],
-                        membershipType = it[Customers.membershipType]
-                    )
-                }.firstOrNull()
-            }
-            
+            val customer = customerService.getCustomerById(id)
             if (customer == null) {
                 call.respond(HttpStatusCode.NotFound)
             } else {
@@ -56,15 +34,8 @@ fun Route.customerRoutes() {
 
         post {
             val customer = call.receive<Customer>()
-            val id = transaction {
-                Customers.insertAndGetId {
-                    it[name] = customer.name
-                    it[phoneNumber] = customer.phoneNumber
-                    it[address] = customer.address
-                    it[membershipType] = customer.membershipType
-                }.value
-            }
-            call.respond(HttpStatusCode.Created, customer.copy(id = id))
+            val createdCustomer = customerService.createCustomer(customer)
+            call.respond(HttpStatusCode.Created, createdCustomer)
         }
 
         delete("{id}") {
@@ -75,17 +46,13 @@ fun Route.customerRoutes() {
             }
 
             try {
-                val deletedCount = transaction {
-                    Customers.deleteWhere { Customers.id eq id }
-                }
-                
-                if (deletedCount == 0) {
-                    call.respond(HttpStatusCode.NotFound)
-                } else {
+                val success = customerService.deleteCustomer(id)
+                if (success) {
                     call.respond(HttpStatusCode.NoContent)
+                } else {
+                    call.respond(HttpStatusCode.NotFound)
                 }
             } catch (e: Exception) {
-                // This usually happens if there's a foreign key constraint violation (e.g. customer has orders)
                 call.respond(HttpStatusCode.Conflict, "Cannot delete customer. They might have existing orders.")
             }
         }
