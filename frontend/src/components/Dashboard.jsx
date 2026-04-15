@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { ShoppingCart, Users, CheckCircle, Clock, TrendingUp, Award, BarChart3, PieChart } from 'lucide-react';
+import { ShoppingCart, Users, CheckCircle, Clock, TrendingUp, Award, BarChart3, PieChart, Zap, ArrowRight } from 'lucide-react';
+import OrderDetailsModal from './OrderDetailsModal';
 
 const Dashboard = () => {
     const [stats, setStats] = useState({
         totalOrders: 0,
         activeOrders: 0,
+        pendingOrders: 0,
+        urgentOrders: 0,
         completedOrders: 0,
         totalCustomers: 0,
         totalRevenue: 0,
         averageOrderValue: 0
     });
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [recentOrders, setRecentOrders] = useState([]);
     const [topCustomers, setTopCustomers] = useState([]);
     const [categoryDistribution, setCategoryDistribution] = useState([]);
@@ -22,6 +26,8 @@ const Dashboard = () => {
                 setStats({
                     totalOrders: data.totalOrders,
                     activeOrders: data.activeOrders,
+                    pendingOrders: data.pendingOrders,
+                    urgentOrders: data.urgentOrders,
                     completedOrders: data.completedOrders,
                     totalCustomers: data.totalCustomers,
                     totalRevenue: data.totalRevenue,
@@ -45,7 +51,7 @@ const Dashboard = () => {
                 <h1>Dashboard Overview</h1>
             </header>
 
-            <div className="stats-grid">
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 <div className="card stat-card">
                     <div style={{ color: '#6366f1', marginBottom: '0.5rem' }}>
                         <ShoppingCart size={24} />
@@ -57,15 +63,29 @@ const Dashboard = () => {
                     <div style={{ color: '#f59e0b', marginBottom: '0.5rem' }}>
                         <Clock size={24} />
                     </div>
-                    <span className="stat-label">Active Orders</span>
+                    <span className="stat-label">Active</span>
                     <span className="stat-value">{stats.activeOrders}</span>
+                </div>
+                <div className="card stat-card">
+                    <div style={{ color: '#3b82f6', marginBottom: '0.5rem' }}>
+                        <Clock size={24} />
+                    </div>
+                    <span className="stat-label">Pending</span>
+                    <span className="stat-value">{stats.pendingOrders}</span>
+                </div>
+                <div className="card stat-card">
+                    <div style={{ color: '#ef4444', marginBottom: '0.5rem' }}>
+                        <Zap size={24} />
+                    </div>
+                    <span className="stat-label">Urgent</span>
+                    <span className="stat-value">{stats.urgentOrders}</span>
                 </div>
                 <div className="card stat-card">
                     <div style={{ color: '#ec4899', marginBottom: '0.5rem' }}>
                         <BarChart3 size={24} />
                     </div>
                     <span className="stat-label">Avg. Order</span>
-                    <span className="stat-value">¥{stats.averageOrderValue.toLocaleString()}</span>
+                    <span className="stat-value">¥{Math.round(stats.averageOrderValue).toLocaleString()}</span>
                 </div>
                 <div className="card stat-card">
                     <div style={{ color: '#10b981', marginBottom: '0.5rem' }}>
@@ -78,9 +98,14 @@ const Dashboard = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                 <div className="card">
-                    <h3 style={{ marginBottom: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Clock size={20} /> Recent Orders
-                    </h3>
+                    <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Clock size={20} /> Recent Orders
+                        </h3>
+                        <a href="/orders" style={{ fontSize: '0.875rem', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontWeight: 600 }}>
+                            View All <ArrowRight size={16} />
+                        </a>
+                    </div>
                     <div className="table-container">
                         <table>
                             <thead>
@@ -94,7 +119,12 @@ const Dashboard = () => {
                             </thead>
                             <tbody>
                                 {recentOrders.map(order => (
-                                    <tr key={order.id}>
+                                    <tr 
+                                        key={order.id} 
+                                        onClick={() => setSelectedOrderId(order.id)}
+                                        style={{ cursor: 'pointer' }}
+                                        className="hover-row"
+                                    >
                                         <td style={{ fontWeight: 600 }}>#{order.id}</td>
                                         <td>{order.customerName}</td>
                                         <td>{order.targetDate}</td>
@@ -171,6 +201,17 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+
+            <OrderDetailsModal 
+                orderId={selectedOrderId} 
+                onClose={() => setSelectedOrderId(null)} 
+            />
+
+            <style>{`
+                .hover-row:hover {
+                    background-color: #f8fafc;
+                }
+            `}</style>
         </div>
     );
 };

@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 data class DashboardStats(
     val totalOrders: Int,
     val activeOrders: Int,
+    val pendingOrders: Int,
+    val urgentOrders: Int,
     val completedOrders: Int,
     val totalCustomers: Int,
     val totalRevenue: Int,

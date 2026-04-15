@@ -9,6 +9,12 @@ class DashboardService {
     fun getDashboardStats(): DashboardStats = transaction {
         val totalOrders = Orders.selectAll().count().toInt()
         val activeOrders = Orders.select { Orders.status neq "Completed" }.count().toInt()
+        val pendingOrders = Orders.select { Orders.status eq "Received" }.count().toInt()
+        val urgentOrders = (Orders innerJoin OrderItems)
+            .slice(Orders.id)
+            .select { (OrderItems.rush eq true) and (Orders.status neq "Completed") }
+            .withDistinct()
+            .count().toInt()
         val completedOrders = Orders.select { Orders.status eq "Completed" }.count().toInt()
         val totalCustomers = Customers.selectAll().count().toInt()
         
@@ -63,6 +69,8 @@ class DashboardService {
         DashboardStats(
             totalOrders = totalOrders,
             activeOrders = activeOrders,
+            pendingOrders = pendingOrders,
+            urgentOrders = urgentOrders,
             completedOrders = completedOrders,
             totalCustomers = totalCustomers,
             totalRevenue = totalRevenue,
