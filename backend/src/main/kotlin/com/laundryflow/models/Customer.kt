@@ -8,5 +8,5 @@ data class Customer(
     val name: String,
     val phoneNumber: String,
     val address: String,
-    val membershipType: String
+    val membershipType: MembershipType
 )

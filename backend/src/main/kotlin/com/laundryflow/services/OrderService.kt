@@ -11,11 +11,11 @@ class OrderService {
     
     companion object {
         val CATEGORY_PRICES = mapOf(
-            "シャツ" to 300,
-            "スーツ" to 1500,
-            "コート" to 2000,
-            "ドレス" to 1800,
-            "毛布" to 2500
+            ItemCategory.SHIRT to 300,
+            ItemCategory.SUIT to 1500,
+            ItemCategory.COAT to 2000,
+            ItemCategory.DRESS to 1800,
+            ItemCategory.BLANKET to 2500
         )
         const val STAIN_REMOVAL_ADDITION = 500
         const val RUSH_MULTIPLIER = 1.3
@@ -75,7 +75,7 @@ class OrderService {
             OrderItem(
                 id = it[OrderItems.id].value,
                 orderId = it[OrderItems.orderId].value,
-                category = it[OrderItems.category],
+                category = ItemCategory.fromString(it[OrderItems.category]),
                 quantity = it[OrderItems.quantity],
                 stainRemoval = it[OrderItems.stainRemoval],
                 rush = it[OrderItems.rush],
@@ -89,7 +89,7 @@ class OrderService {
             customerName = orderRow[Customers.name],
             receivedDate = orderRow[Orders.receivedDate].toString(),
             targetDate = orderRow[Orders.targetDate].toString(),
-            status = orderRow[Orders.status],
+            status = OrderStatus.fromString(orderRow[Orders.status]),
             totalAmount = orderRow[Orders.totalAmount],
             hasRush = items.any { it.rush },
             hasStainRemoval = items.any { it.stainRemoval },
@@ -119,7 +119,7 @@ class OrderService {
             it[customerId] = orderReq.customerId
             it[receivedDate] = LocalDateTime.now()
             it[targetDate] = LocalDate.parse(orderReq.targetDate)
-            it[status] = "Received"
+            it[status] = OrderStatus.RECEIVED.toString()
             it[totalAmount] = calculatedTotalAmount
         }.value
         
@@ -129,7 +129,7 @@ class OrderService {
             )
             OrderItems.insert {
                 it[orderId] = newOrderId
-                it[category] = item.category
+                it[category] = item.category.toString()
                 it[quantity] = item.quantity
                 it[stainRemoval] = item.stainRemoval
                 it[rush] = item.rush
@@ -165,7 +165,7 @@ class OrderService {
      * 
      * Rule: 加算してから急ぎ割増を適用し、最後に会員割引を適用
      */
-    fun calculateItemPrice(category: String, quantity: Int, stainRemoval: Boolean, rush: Boolean, membershipType: String = "Regular"): Int {
+    fun calculateItemPrice(category: ItemCategory, quantity: Int, stainRemoval: Boolean, rush: Boolean, membershipType: MembershipType = MembershipType.REGULAR): Int {
         val basePrice = CATEGORY_PRICES[category] ?: 0
         
         var unitPrice = basePrice
@@ -183,7 +183,7 @@ class OrderService {
         }
 
         // "会員割引: Premium会員は10%引き（端数切り捨て）"
-        if (membershipType == "Premium") {
+        if (membershipType == MembershipType.PREMIUM) {
             subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
         }
         
@@ -193,7 +193,7 @@ class OrderService {
     /**
      * Calculates the total price for an entire order.
      */
-    fun calculateTotalOrderPrice(items: List<OrderItem>, membershipType: String = "Regular"): Int {
+    fun calculateTotalOrderPrice(items: List<OrderItem>, membershipType: MembershipType = MembershipType.REGULAR): Int {
         return items.sumOf { item ->
             calculateItemPrice(item.category, item.quantity, item.stainRemoval, item.rush, membershipType)
         }

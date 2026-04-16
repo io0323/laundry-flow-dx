@@ -9,7 +9,7 @@ data class Order(
     val customerName: String? = null, // Convenience field for frontend
     val receivedDate: String? = null, // LocalDateTime as ISO-8601 string
     val targetDate: String,           // LocalDate as ISO-8601 string
-    val status: String,
+    val status: OrderStatus,
     val totalAmount: Int,
     val hasRush: Boolean = false,
     val hasStainRemoval: Boolean = false,
@@ -20,7 +20,7 @@ data class Order(
 data class OrderItem(
     val id: Int? = null,
     val orderId: Int? = null,
-    val category: String,
+    val category: ItemCategory,
     val quantity: Int,
     val stainRemoval: Boolean = false,
     val rush: Boolean = false,
