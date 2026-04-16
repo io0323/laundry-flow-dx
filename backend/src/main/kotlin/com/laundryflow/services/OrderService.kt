@@ -22,31 +22,54 @@ class OrderService {
         const val PREMIUM_DISCOUNT = 0.9
     }
 
+    /**
+     * Gets all orders from the database.
+     * Efficiency: Uses a separate query for rush/stain flags to avoid N+1 problem.
+     */
     fun getAllOrders(): List<Order> = transaction {
-        (Orders innerJoin Customers).selectAll()
+        // Query 1: Get all orders joined with customers
+        val orderRows = (Orders innerJoin Customers)
+            .selectAll()
             .orderBy(Orders.id to SortOrder.DESC)
-            .map {
-                val orderId = it[Orders.id].value
-                val hasRush = OrderItems.select { OrderItems.orderId eq orderId and (OrderItems.rush eq true) }.count() > 0
-                val hasStainRemoval = OrderItems.select { OrderItems.orderId eq orderId and (OrderItems.stainRemoval eq true) }.count() > 0
+            .toList()
+        
+        if (orderRows.isEmpty()) return@transaction emptyList()
 
-                Order(
-                    id = orderId,
-                    customerId = it[Orders.customerId].value,
-                    customerName = it[Customers.name],
-                    receivedDate = it[Orders.receivedDate].toString(),
-                    targetDate = it[Orders.targetDate].toString(),
-                    status = OrderStatus.fromString(it[Orders.status]),
-                    totalAmount = it[Orders.totalAmount],
-                    hasRush = hasRush,
-                    hasStainRemoval = hasStainRemoval
-                )
-            }
+        val orderIds = orderRows.map { it[Orders.id].value }
+
+        // Query 2: Get flags for all these orders in one go
+        // We check if any item in the order has rush or stainRemoval
+        val orderFlags = OrderItems
+            .slice(OrderItems.orderId, OrderItems.rush, OrderItems.stainRemoval)
+            .select { OrderItems.orderId inList orderIds }
+            .toList()
+            .groupBy { it[OrderItems.orderId].value }
+
+        orderRows.map { row ->
+            val orderId = row[Orders.id].value
+            val itemsForOrder = orderFlags[orderId] ?: emptyList()
+            
+            Order(
+                id = orderId,
+                customerId = row[Orders.customerId].value,
+                customerName = row[Customers.name],
+                receivedDate = row[Orders.receivedDate].toString(),
+                targetDate = row[Orders.targetDate].toString(),
+                status = row[Orders.status],
+                totalAmount = row[Orders.totalAmount],
+                hasRush = itemsForOrder.any { it[OrderItems.rush] },
+                hasStainRemoval = itemsForOrder.any { it[OrderItems.stainRemoval] }
+            )
+        }
     }
 
+    /**
+     * Gets an order by ID including its items.
+     */
     fun getOrderById(id: Int): Order? = transaction {
-        val orderRow = (Orders innerJoin Customers).select { Orders.id eq id }.firstOrNull()
-        if (orderRow == null) return@transaction null
+        val orderRow = (Orders innerJoin Customers)
+            .select { Orders.id eq id }
+            .firstOrNull() ?: return@transaction null
         
         val items = OrderItems.select { OrderItems.orderId eq id }.map {
             OrderItem(
@@ -74,9 +97,23 @@ class OrderService {
         )
     }
 
-    fun createOrder(orderReq: Order, membershipType: MembershipType): Pair<Int, Int> = transaction {
-        validateOrder(orderReq)
-        val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items, membershipType)
+    /**
+     * Creates a new order.
+     * Returns the generated order ID.
+     */
+    fun createOrder(orderReq: Order): Int = transaction {
+        // Validation: Customer must exist
+        val customerExists = Customers.select { Customers.id eq orderReq.customerId }.count() > 0
+        if (!customerExists) {
+            throw IllegalArgumentException("Customer does not exist")
+        }
+
+        // Validation: Items must not be empty
+        if (orderReq.items.isEmpty()) {
+            throw IllegalArgumentException("Order must have at least one item")
+        }
+
+        val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items)
 
         val newOrderId = Orders.insertAndGetId {
             it[customerId] = orderReq.customerId
@@ -88,7 +125,7 @@ class OrderService {
         
         orderReq.items.forEach { item ->
             val calculatedSubtotal = calculateItemPrice(
-                item.category, item.quantity, item.stainRemoval, item.rush, membershipType
+                item.category, item.quantity, item.stainRemoval, item.rush
             )
             OrderItems.insert {
                 it[orderId] = newOrderId
@@ -99,33 +136,21 @@ class OrderService {
                 it[subtotalPrice] = calculatedSubtotal
             }
         }
-        Pair(newOrderId, calculatedTotalAmount)
+        newOrderId
     }
 
-    internal fun validateOrder(orderReq: Order) {
-        if (orderReq.items.isEmpty()) throw IllegalArgumentException("Order must have at least one item.")
-        
-        orderReq.items.forEach { item ->
-            if (item.quantity <= 0) throw IllegalArgumentException("Quantity must be greater than zero for all items.")
-        }
-        
-        val targetDate = try {
-            LocalDate.parse(orderReq.targetDate)
-        } catch (e: Exception) {
-            throw IllegalArgumentException("Invalid date format for targetDate: ${orderReq.targetDate}")
-        }
-        
-        if (targetDate.isBefore(LocalDate.now())) {
-            throw IllegalArgumentException("Target date cannot be in the past.")
-        }
-    }
-
-    fun updateOrderStatus(id: Int, status: OrderStatus) = transaction {
+    /**
+     * Updates the status of an order.
+     */
+    fun updateOrderStatus(id: Int, newStatus: String) = transaction {
         Orders.update({ Orders.id eq id }) {
-            it[this.status] = status.toString()
+            it[status] = newStatus
         }
     }
 
+    /**
+     * Deletes an order and its items.
+     */
     fun deleteOrder(id: Int) = transaction {
         OrderItems.deleteWhere { OrderItems.orderId eq id }
         Orders.deleteWhere { Orders.id eq id }
