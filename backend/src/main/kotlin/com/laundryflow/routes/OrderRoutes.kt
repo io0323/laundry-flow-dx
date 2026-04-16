@@ -55,8 +55,12 @@ fun Route.orderRoutes() {
                 return@post
             }
 
-            val (newOrderId, totalAmount) = orderService.createOrder(orderReq, membershipType)
-            call.respond(HttpStatusCode.Created, mapOf("id" to newOrderId, "totalAmount" to totalAmount))
+            try {
+                val (newOrderId, totalAmount) = orderService.createOrder(orderReq, membershipType)
+                call.respond(HttpStatusCode.Created, mapOf("id" to newOrderId, "totalAmount" to totalAmount))
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid order data")
+            }
         }
 
         patch("{id}/status") {
@@ -72,7 +76,8 @@ fun Route.orderRoutes() {
                 call.respond(HttpStatusCode.BadRequest, "Invalid status update format")
                 return@patch
             }
-            val newStatus = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest)
+            val statusStr = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest)
+            val newStatus = OrderStatus.fromString(statusStr)
             
             orderService.updateOrderStatus(id, newStatus)
             call.respond(HttpStatusCode.OK)

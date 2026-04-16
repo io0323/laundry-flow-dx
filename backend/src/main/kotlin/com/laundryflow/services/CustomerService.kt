@@ -1,7 +1,6 @@
 package com.laundryflow.services
 
-import com.laundryflow.models.Customer
-import com.laundryflow.models.Customers
+import com.laundryflow.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -15,7 +14,7 @@ class CustomerService {
                 name = it[Customers.name],
                 phoneNumber = it[Customers.phoneNumber],
                 address = it[Customers.address],
-                membershipType = it[Customers.membershipType]
+                membershipType = MembershipType.fromString(it[Customers.membershipType])
             )
         }
     }
@@ -27,7 +26,7 @@ class CustomerService {
                 name = it[Customers.name],
                 phoneNumber = it[Customers.phoneNumber],
                 address = it[Customers.address],
-                membershipType = it[Customers.membershipType]
+                membershipType = MembershipType.fromString(it[Customers.membershipType])
             )
         }.firstOrNull()
     }
@@ -37,7 +36,7 @@ class CustomerService {
             it[name] = customer.name
             it[phoneNumber] = customer.phoneNumber
             it[address] = customer.address
-            it[membershipType] = customer.membershipType
+            it[membershipType] = customer.membershipType.toString()
         }.value
         customer.copy(id = id)
     }
@@ -47,9 +46,9 @@ class CustomerService {
         deletedCount > 0
     }
 
-    fun getMembershipType(customerId: Int): String? = transaction {
+    fun getMembershipType(customerId: Int): MembershipType? = transaction {
         Customers.select { Customers.id eq customerId }
-            .map { it[Customers.membershipType] }
+            .map { MembershipType.fromString(it[Customers.membershipType]) }
             .firstOrNull()
     }
 }

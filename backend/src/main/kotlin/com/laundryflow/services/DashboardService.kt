@@ -8,14 +8,14 @@ class DashboardService {
 
     fun getDashboardStats(): DashboardStats = transaction {
         val totalOrders = Orders.selectAll().count().toInt()
-        val activeOrders = Orders.select { Orders.status neq "Completed" }.count().toInt()
-        val pendingOrders = Orders.select { Orders.status eq "Received" }.count().toInt()
+        val activeOrders = Orders.select { Orders.status neq OrderStatus.COMPLETED.toString() }.count().toInt()
+        val pendingOrders = Orders.select { Orders.status eq OrderStatus.RECEIVED.toString() }.count().toInt()
         val urgentOrders = (Orders innerJoin OrderItems)
             .slice(Orders.id)
-            .select { (OrderItems.rush eq true) and (Orders.status neq "Completed") }
+            .select { (OrderItems.rush eq true) and (Orders.status neq OrderStatus.COMPLETED.toString()) }
             .withDistinct()
             .count().toInt()
-        val completedOrders = Orders.select { Orders.status eq "Completed" }.count().toInt()
+        val completedOrders = Orders.select { Orders.status eq OrderStatus.COMPLETED.toString() }.count().toInt()
         val totalCustomers = Customers.selectAll().count().toInt()
         
         val totalRevenue = Orders.slice(Orders.totalAmount.sum()).selectAll().singleOrNull()?.getOrNull(Orders.totalAmount.sum()) ?: 0
@@ -45,7 +45,7 @@ class DashboardService {
                     customerName = it[Customers.name],
                     receivedDate = it[Orders.receivedDate].toString(),
                     targetDate = it[Orders.targetDate].toString(),
-                    status = it[Orders.status],
+                    status = OrderStatus.fromString(it[Orders.status]),
                     totalAmount = it[Orders.totalAmount]
                 )
             }
