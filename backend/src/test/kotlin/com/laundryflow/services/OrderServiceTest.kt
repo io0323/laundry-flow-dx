@@ -79,4 +79,31 @@ class OrderServiceTest : StringSpec({
         }
         exception.message shouldBe "Target date cannot be in the past."
     }
+
+    "Status Transition: RECEIVED can move to WASHING" {
+        OrderStatus.RECEIVED.canTransitionTo(OrderStatus.WASHING) shouldBe true
+    }
+
+    "Status Transition: RECEIVED cannot move directly to COMPLETED" {
+        OrderStatus.RECEIVED.canTransitionTo(OrderStatus.COMPLETED) shouldBe false
+    }
+
+    "Status Transition: WASHING can move to FINISHING" {
+        OrderStatus.WASHING.canTransitionTo(OrderStatus.FINISHING) shouldBe true
+    }
+
+    "Status Transition: WASHING cannot move back to RECEIVED" {
+        OrderStatus.WASHING.canTransitionTo(OrderStatus.RECEIVED) shouldBe false
+    }
+
+    "Status Transition: Idempotency (WASHING to WASHING) is allowed" {
+        OrderStatus.WASHING.canTransitionTo(OrderStatus.WASHING) shouldBe true
+    }
+
+    "Status Transition: COMPLETED is terminal" {
+        OrderStatus.COMPLETED.canTransitionTo(OrderStatus.RECEIVED) shouldBe false
+        OrderStatus.COMPLETED.canTransitionTo(OrderStatus.WASHING) shouldBe false
+        OrderStatus.COMPLETED.canTransitionTo(OrderStatus.FINISHING) shouldBe false
+        OrderStatus.COMPLETED.canTransitionTo(OrderStatus.WAITING_FOR_PICKUP) shouldBe false
+    }
 })

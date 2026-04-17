@@ -121,6 +121,15 @@ class OrderService {
     }
 
     fun updateOrderStatus(id: Int, status: OrderStatus) = transaction {
+        val currentStatusStr = Orders.select { Orders.id eq id }.firstOrNull()?.get(Orders.status)
+            ?: throw IllegalArgumentException("Order with ID $id not found.")
+        
+        val currentStatus = OrderStatus.fromString(currentStatusStr)
+        
+        if (!currentStatus.canTransitionTo(status)) {
+            throw IllegalArgumentException("Invalid status transition from $currentStatus to $status")
+        }
+
         Orders.update({ Orders.id eq id }) {
             it[this.status] = status.toString()
         }

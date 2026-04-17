@@ -79,8 +79,12 @@ fun Route.orderRoutes() {
             val statusStr = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest)
             val newStatus = OrderStatus.fromString(statusStr)
             
-            orderService.updateOrderStatus(id, newStatus)
-            call.respond(HttpStatusCode.OK)
+            try {
+                orderService.updateOrderStatus(id, newStatus)
+                call.respond(HttpStatusCode.OK)
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid status transition")
+            }
         }
 
         delete("{id}") {
