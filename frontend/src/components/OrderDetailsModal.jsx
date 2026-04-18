@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock } from 'lucide-react';
+import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock, FileText } from 'lucide-react';
 
 const OrderDetailsModal = ({ orderId, onClose }) => {
     const [order, setOrder] = useState(null);
@@ -77,6 +77,16 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                                 </div>
                             </div>
                         </div>
+
+                        {order.notes && (
+                            <div className="notes-section" style={{ marginBottom: '2.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '12px', borderLeft: '4px solid #6366f1' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <FileText size={16} color="#64748b" />
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Notes / Special Instructions</label>
+                                </div>
+                                <p style={{ fontSize: '0.875rem', color: '#1e293b', whiteSpace: 'pre-wrap' }}>{order.notes}</p>
+                            </div>
+                        )}
 
                         <div className="items-section">
                             <h3>Order Items</h3>
