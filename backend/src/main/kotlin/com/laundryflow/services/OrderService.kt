@@ -55,10 +55,11 @@ class OrderService {
                 customerName = row[Customers.name],
                 receivedDate = row[Orders.receivedDate].toString(),
                 targetDate = row[Orders.targetDate].toString(),
-                status = row[Orders.status],
+                status = OrderStatus.fromString(row[Orders.status]),
                 totalAmount = row[Orders.totalAmount],
                 hasRush = itemsForOrder.any { it[OrderItems.rush] },
-                hasStainRemoval = itemsForOrder.any { it[OrderItems.stainRemoval] }
+                hasStainRemoval = itemsForOrder.any { it[OrderItems.stainRemoval] },
+                notes = row[Orders.notes]
             )
         }
     }
@@ -93,6 +94,7 @@ class OrderService {
             totalAmount = orderRow[Orders.totalAmount],
             hasRush = items.any { it.rush },
             hasStainRemoval = items.any { it.stainRemoval },
+            notes = orderRow[Orders.notes],
             items = items
         )
     }
@@ -121,6 +123,7 @@ class OrderService {
             it[targetDate] = LocalDate.parse(orderReq.targetDate)
             it[status] = OrderStatus.RECEIVED.toString()
             it[totalAmount] = calculatedTotalAmount
+            it[notes] = orderReq.notes
         }.value
         
         orderReq.items.forEach { item ->

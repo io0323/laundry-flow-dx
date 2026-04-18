@@ -16,6 +16,7 @@ const NewOrder = ({ onComplete }) => {
     const [items, setItems] = useState([{ category: 'シャツ', quantity: 1, stainRemoval: false, rush: false, subtotalPrice: 300 }]);
     const [targetDate, setTargetDate] = useState('');
     const [isCustomTargetDate, setIsCustomTargetDate] = useState(false);
+    const [notes, setNotes] = useState('');
 
     useEffect(() => {
         api.getCustomers().then(setCustomers);
@@ -97,6 +98,7 @@ const NewOrder = ({ onComplete }) => {
                 targetDate: targetDate,
                 status: 'Received',
                 totalAmount: totalAmount,
+                notes: notes,
                 items: items
             });
             onComplete();
@@ -139,6 +141,24 @@ const NewOrder = ({ onComplete }) => {
                                 }} 
                             />
                         </div>
+                    </div>
+
+                    <div className="input-group" style={{ marginBottom: '2rem' }}>
+                        <label>Notes / Special Instructions</label>
+                        <textarea 
+                            placeholder="Add any special instructions here..."
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                minHeight: '80px', 
+                                padding: '0.75rem', 
+                                borderRadius: '8px', 
+                                border: '1px solid #e2e8f0',
+                                fontFamily: 'inherit',
+                                fontSize: '0.875rem'
+                            }}
+                        />
                     </div>
 
                     <h3 style={{ marginBottom: '1.5rem', fontWeight: 700 }}>Order Items</h3>

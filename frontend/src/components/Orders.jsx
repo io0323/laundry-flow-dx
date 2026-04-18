@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { ShoppingCart, RefreshCw, Search, Filter, Zap, Droplets, Trash2, Eye } from 'lucide-react';
+import { ShoppingCart, RefreshCw, Search, Filter, Zap, Droplets, Trash2, Eye, FileText } from 'lucide-react';
 import OrderDetailsModal from './OrderDetailsModal';
 
 const Orders = () => {
@@ -110,6 +110,7 @@ const Orders = () => {
                                         #{o.id}
                                         {o.hasRush && <Zap size={14} fill="#f59e0b" color="#f59e0b" title="Rush Order" />}
                                         {o.hasStainRemoval && <Droplets size={14} fill="#3b82f6" color="#3b82f6" title="Stain Removal" />}
+                                        {o.notes && <FileText size={14} color="#64748b" title={`Notes: ${o.notes.substring(0, 30)}${o.notes.length > 30 ? '...' : ''}`} />}
                                     </div>
                                 </td>
                                 <td style={{ color: '#475569' }}>{o.customerName}</td>

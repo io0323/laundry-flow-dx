@@ -1,7 +1,9 @@
 package com.laundryflow.routes
 
-import com.laundryflow.models.Customer
+import com.laundryflow.models.*
 import com.laundryflow.services.CustomerService
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.transaction
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -48,10 +50,10 @@ fun Route.customerRoutes() {
             val customer = call.receive<Customer>()
             val updatedCount = transaction {
                 Customers.update({ Customers.id eq id }) {
-                    it[name] = customer.name
-                    it[phoneNumber] = customer.phoneNumber
-                    it[address] = customer.address
-                    it[membershipType] = customer.membershipType
+                    it[Customers.name] = customer.name
+                    it[Customers.phoneNumber] = customer.phoneNumber
+                    it[Customers.address] = customer.address
+                    it[Customers.membershipType] = customer.membershipType.toString()
                 }
             }
 

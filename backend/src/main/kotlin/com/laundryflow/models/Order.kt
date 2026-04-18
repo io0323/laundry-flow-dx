@@ -13,6 +13,7 @@ data class Order(
     val totalAmount: Int,
     val hasRush: Boolean = false,
     val hasStainRemoval: Boolean = false,
+    val notes: String? = null,
     val items: List<OrderItem> = emptyList()
 )
 
