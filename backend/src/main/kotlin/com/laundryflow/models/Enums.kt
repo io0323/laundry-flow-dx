@@ -30,6 +30,17 @@ enum class OrderStatus {
         fun fromString(value: String): OrderStatus = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) } ?: RECEIVED
     }
 
+    fun canTransitionTo(next: OrderStatus): Boolean {
+        if (this == next) return true // Allow same status (idempotent)
+        return when (this) {
+            RECEIVED -> next == WASHING
+            WASHING -> next == FINISHING
+            FINISHING -> next == WAITING_FOR_PICKUP
+            WAITING_FOR_PICKUP -> next == COMPLETED
+            COMPLETED -> false
+        }
+    }
+
     override fun toString(): String = when(this) {
         RECEIVED -> "Received"
         WASHING -> "Washing"
