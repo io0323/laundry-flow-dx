@@ -15,7 +15,12 @@ fun Route.customerRoutes() {
 
     route("/api/customers") {
         get {
-            val customers = customerService.getAllCustomers()
+            val query = call.request.queryParameters["query"]
+            val customers = if (query != null) {
+                customerService.searchCustomers(query)
+            } else {
+                customerService.getAllCustomers()
+            }
             call.respond(customers)
         }
 
@@ -48,16 +53,9 @@ fun Route.customerRoutes() {
             }
 
             val customer = call.receive<Customer>()
-            val updatedCount = transaction {
-                Customers.update({ Customers.id eq id }) {
-                    it[Customers.name] = customer.name
-                    it[Customers.phoneNumber] = customer.phoneNumber
-                    it[Customers.address] = customer.address
-                    it[Customers.membershipType] = customer.membershipType.toString()
-                }
-            }
+            val success = customerService.updateCustomer(id, customer)
 
-            if (updatedCount == 0) {
+            if (!success) {
                 call.respond(HttpStatusCode.NotFound)
             } else {
                 call.respond(HttpStatusCode.OK, customer.copy(id = id))
