@@ -96,6 +96,7 @@ class OrderService {
             totalAmount = orderRow[Orders.totalAmount],
             hasRush = items.any { it.rush },
             hasStainRemoval = items.any { it.stainRemoval },
+            notes = orderRow[Orders.notes],
             items = items
         )
     }
@@ -120,8 +121,8 @@ class OrderService {
             it[receivedDate] = LocalDateTime.now()
             it[targetDate] = LocalDate.parse(orderReq.targetDate)
             it[status] = OrderStatus.RECEIVED.toString()
-            it[Orders.totalAmount] = calculatedTotalAmount
-            it[Orders.notes] = orderReq.notes
+            it[totalAmount] = calculatedTotalAmount
+            it[notes] = orderReq.notes
         }.value
         
         orderReq.items.forEach { item ->

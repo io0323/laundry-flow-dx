@@ -56,6 +56,21 @@ class CustomerService {
         updatedCount > 0
     }
 
+    fun searchCustomers(query: String): List<Customer> = transaction {
+        Customers.select {
+            (Customers.name.lowerCase() like "%${query.lowercase()}%") or 
+            (Customers.phoneNumber like "%$query%")
+        }.map {
+            Customer(
+                id = it[Customers.id].value,
+                name = it[Customers.name],
+                phoneNumber = it[Customers.phoneNumber],
+                address = it[Customers.address],
+                membershipType = MembershipType.fromString(it[Customers.membershipType])
+            )
+        }
+    }
+
     fun getMembershipType(customerId: Int): MembershipType? = transaction {
         Customers.select { Customers.id eq customerId }
             .map { MembershipType.fromString(it[Customers.membershipType]) }

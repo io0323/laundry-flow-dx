@@ -1,7 +1,9 @@
 package com.laundryflow.routes
 
-import com.laundryflow.models.Customer
+import com.laundryflow.models.*
 import com.laundryflow.services.CustomerService
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.transaction
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -13,7 +15,12 @@ fun Route.customerRoutes() {
 
     route("/api/customers") {
         get {
-            val customers = customerService.getAllCustomers()
+            val query = call.request.queryParameters["query"]
+            val customers = if (query != null) {
+                customerService.searchCustomers(query)
+            } else {
+                customerService.getAllCustomers()
+            }
             call.respond(customers)
         }
 
