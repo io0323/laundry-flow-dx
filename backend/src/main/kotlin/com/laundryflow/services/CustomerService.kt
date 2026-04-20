@@ -46,6 +46,16 @@ class CustomerService {
         deletedCount > 0
     }
 
+    fun updateCustomer(id: Int, customer: Customer): Boolean = transaction {
+        val updatedCount = Customers.update({ Customers.id eq id }) {
+            it[name] = customer.name
+            it[phoneNumber] = customer.phoneNumber
+            it[address] = customer.address
+            it[membershipType] = customer.membershipType.toString()
+        }
+        updatedCount > 0
+    }
+
     fun getMembershipType(customerId: Int): MembershipType? = transaction {
         Customers.select { Customers.id eq customerId }
             .map { MembershipType.fromString(it[Customers.membershipType]) }

@@ -55,7 +55,7 @@ class OrderServiceTest : StringSpec({
     }
 
     "Validation: throw error for empty items" {
-        val order = Order(customerId = 1, targetDate = "2026-12-31", status = OrderStatus.RECEIVED, totalAmount = 0, items = emptyList())
+        val order = Order(customerId = 1, targetDate = LocalDate.now().toString(), status = OrderStatus.RECEIVED, totalAmount = 0, items = emptyList())
         val exception = io.kotest.assertions.throwables.shouldThrow<IllegalArgumentException> {
             service.validateOrder(order)
         }
@@ -81,23 +81,23 @@ class OrderServiceTest : StringSpec({
     }
 
     "Premium discount: (シャツ 300) * 0.9 = 270" {
-        service.calculateItemPrice("シャツ", 1, false, false, "Premium") shouldBe 270
+        service.calculateItemPrice(ItemCategory.SHIRT, 1, false, false, MembershipType.PREMIUM) shouldBe 270
     }
 
     "Premium discount with multiple units: (シャツ 300 * 2) * 0.9 = 540" {
-        service.calculateItemPrice("シャツ", 2, false, false, "Premium") shouldBe 540
+        service.calculateItemPrice(ItemCategory.SHIRT, 2, false, false, MembershipType.PREMIUM) shouldBe 540
     }
 
     "Premium discount with BOTH stain and rush: ((毛布 2500 + 500) * 1 * 1.3) * 0.9 = 3510" {
         // (2500+500) * 1.3 = 3900, then 3900 * 0.9 = 3510
-        service.calculateItemPrice("毛布", 1, true, true, "Premium") shouldBe 3510
+        service.calculateItemPrice(ItemCategory.BLANKET, 1, true, true, MembershipType.PREMIUM) shouldBe 3510
     }
 
     "Total order price with Premium discount for multiple items" {
         val items = listOf(
-            OrderItem(category = "シャツ", quantity = 2, stainRemoval = true, rush = false, subtotalPrice = 0), // (300+500)*2 = 1600 -> Premium: 1440
-            OrderItem(category = "スーツ", quantity = 1, stainRemoval = false, rush = true, subtotalPrice = 0)  // 1500 * 1.3 = 1950 -> Premium: 1755
+            OrderItem(category = ItemCategory.SHIRT, quantity = 2, stainRemoval = true, rush = false, subtotalPrice = 1600), // (300+500)*2 = 1600 -> Premium: 1440
+            OrderItem(category = ItemCategory.SUIT, quantity = 1, stainRemoval = false, rush = true, subtotalPrice = 1950)  // 1500 * 1.3 = 1950 -> Premium: 1755
         )
-        service.calculateTotalOrderPrice(items, "Premium") shouldBe (1440 + 1755)
+        service.calculateTotalOrderPrice(items, MembershipType.PREMIUM) shouldBe (1440 + 1755)
     }
 })

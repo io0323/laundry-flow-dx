@@ -46,16 +46,9 @@ fun Route.customerRoutes() {
             }
 
             val customer = call.receive<Customer>()
-            val updatedCount = transaction {
-                Customers.update({ Customers.id eq id }) {
-                    it[name] = customer.name
-                    it[phoneNumber] = customer.phoneNumber
-                    it[address] = customer.address
-                    it[membershipType] = customer.membershipType
-                }
-            }
+            val success = customerService.updateCustomer(id, customer)
 
-            if (updatedCount == 0) {
+            if (!success) {
                 call.respond(HttpStatusCode.NotFound)
             } else {
                 call.respond(HttpStatusCode.OK, customer.copy(id = id))
