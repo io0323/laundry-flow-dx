@@ -4,10 +4,12 @@ import com.laundryflow.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 class OrderService {
+    private val logger = LoggerFactory.getLogger(OrderService::class.java)
     
     companion object {
         val CATEGORY_PRICES = mapOf(
@@ -99,23 +101,20 @@ class OrderService {
         )
     }
 
-    /**
-     * Creates a new order.
-     * Returns the generated order ID.
-     */
     fun createOrder(orderReq: Order): Int = transaction {
-        // Validation: Customer must exist
-        val customerExists = Customers.select { Customers.id eq orderReq.customerId }.count() > 0
-        if (!customerExists) {
-            throw IllegalArgumentException("Customer does not exist")
-        }
+        logger.info("Creating order for customer ID: {}", orderReq.customerId)
+        // Validation
+        validateOrder(orderReq)
 
-        // Validation: Items must not be empty
-        if (orderReq.items.isEmpty()) {
-            throw IllegalArgumentException("Order must have at least one item")
-        }
+        // Fetch customer to get membership type for correct price calculation
+        val customerRow = Customers.select { Customers.id eq orderReq.customerId }.firstOrNull()
+            ?: throw IllegalArgumentException("Customer does not exist with ID: ${orderReq.customerId}")
+        
+        val membershipType = MembershipType.fromString(customerRow[Customers.membershipType])
+        logger.debug("Customer membership type: {}", membershipType)
 
-        val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items)
+        val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items, membershipType)
+        logger.info("Calculated total order amount: {} (Membership: {})", calculatedTotalAmount, membershipType)
 
         val newOrderId = Orders.insertAndGetId {
             it[customerId] = orderReq.customerId
@@ -128,8 +127,11 @@ class OrderService {
         
         orderReq.items.forEach { item ->
             val calculatedSubtotal = calculateItemPrice(
-                item.category, item.quantity, item.stainRemoval, item.rush
+                item.category, item.quantity, item.stainRemoval, item.rush, membershipType
             )
+            logger.debug("Item calculation: {} x {} (Stain: {}, Rush: {}) -> {}", 
+                item.category, item.quantity, item.stainRemoval, item.rush, calculatedSubtotal)
+
             OrderItems.insert {
                 it[orderId] = newOrderId
                 it[category] = item.category.toString()
@@ -139,6 +141,7 @@ class OrderService {
                 it[subtotalPrice] = calculatedSubtotal
             }
         }
+        logger.info("Order created successfully with ID: {}", newOrderId)
         newOrderId
     }
 
@@ -212,6 +215,23 @@ class OrderService {
             receivedDate.plusDays(1)
         } else {
             receivedDate.plusDays(3)
+        }
+    }
+
+    /**
+     * Validates an order.
+     * Throws IllegalArgumentException if validation fails.
+     */
+    fun validateOrder(order: Order) {
+        if (order.items.isEmpty()) {
+            throw IllegalArgumentException("Order must have at least one item.")
+        }
+        if (order.items.any { it.quantity <= 0 }) {
+            throw IllegalArgumentException("Quantity must be greater than zero for all items.")
+        }
+        val targetDate = LocalDate.parse(order.targetDate)
+        if (targetDate.isBefore(LocalDate.now())) {
+            throw IllegalArgumentException("Target date cannot be in the past.")
         }
     }
 }
