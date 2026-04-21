@@ -9,7 +9,8 @@ enum class MembershipType {
     @SerialName("Premium") PREMIUM;
 
     companion object {
-        fun fromString(value: String): MembershipType = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) } ?: REGULAR
+        fun fromString(value: String): MembershipType = fromStringOrNull(value) ?: REGULAR
+        fun fromStringOrNull(value: String): MembershipType? = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) }
     }
 
     override fun toString(): String = when(this) {
@@ -27,7 +28,8 @@ enum class OrderStatus {
     @SerialName("Completed") COMPLETED;
 
     companion object {
-        fun fromString(value: String): OrderStatus = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) } ?: RECEIVED
+        fun fromString(value: String): OrderStatus = fromStringOrNull(value) ?: RECEIVED
+        fun fromStringOrNull(value: String): OrderStatus? = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) }
     }
 
     fun canTransitionTo(next: OrderStatus): Boolean {
@@ -59,7 +61,8 @@ enum class ItemCategory {
     @SerialName("毛布") BLANKET;
 
     companion object {
-        fun fromString(value: String): ItemCategory = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) } ?: SHIRT
+        fun fromString(value: String): ItemCategory = fromStringOrNull(value) ?: SHIRT
+        fun fromStringOrNull(value: String): ItemCategory? = values().find { it.name.equals(value, ignoreCase = true) || it.toString().equals(value, ignoreCase = true) }
     }
 
     override fun toString(): String = when(this) {

@@ -11,7 +11,6 @@ import io.ktor.server.routing.*
 
 fun Route.orderRoutes() {
     val orderService = OrderService()
-    val customerService = CustomerService()
 
     route("/api/orders") {
         get {
@@ -74,13 +73,23 @@ fun Route.orderRoutes() {
                 return@patch
             }
 
-            val newStatus = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest, "Missing 'status' field")
+            val newStatusStr = statusUpdate["status"] ?: return@patch call.respond(HttpStatusCode.BadRequest, "Missing 'status' field")
+            val newStatus = OrderStatus.fromStringOrNull(newStatusStr)
+            
+            if (newStatus == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid status: $newStatusStr")
+                return@patch
+            }
             
             try {
                 orderService.updateOrderStatus(id, newStatus)
                 call.respond(HttpStatusCode.OK)
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.NotFound, e.message ?: "Order not found")
+            } catch (e: IllegalStateException) {
+                call.respond(HttpStatusCode.Conflict, e.message ?: "Invalid status transition")
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, "Failed to update status")
+                call.respond(HttpStatusCode.InternalServerError, "Failed to update status: ${e.message}")
             }
         }
 
