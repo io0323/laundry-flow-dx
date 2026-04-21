@@ -146,12 +146,22 @@ class OrderService {
     }
 
     /**
-     * Updates the status of an order.
+     * Updates the status of an order with transition validation.
      */
-    fun updateOrderStatus(id: Int, newStatus: String) = transaction {
-        Orders.update({ Orders.id eq id }) {
-            it[status] = newStatus
+    fun updateOrderStatus(id: Int, nextStatus: OrderStatus) = transaction {
+        val currentStatus = Orders.select { Orders.id eq id }
+            .map { OrderStatus.fromString(it[Orders.status]) }
+            .firstOrNull() ?: throw IllegalArgumentException("Order not found with ID: $id")
+        
+        if (!currentStatus.canTransitionTo(nextStatus)) {
+            logger.warn("Invalid status transition attempted for order {}: {} -> {}", id, currentStatus, nextStatus)
+            throw IllegalStateException("Invalid status transition from $currentStatus to $nextStatus")
         }
+        
+        Orders.update({ Orders.id eq id }) {
+            it[status] = nextStatus.toString()
+        }
+        logger.info("Order {} status updated from {} to {}", id, currentStatus, nextStatus)
     }
 
     /**
