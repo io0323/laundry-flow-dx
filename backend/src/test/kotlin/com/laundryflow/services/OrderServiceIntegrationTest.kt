@@ -49,7 +49,7 @@ class OrderServiceIntegrationTest : StringSpec({
         val createdOrder = service.getOrderById(orderId)
 
         createdOrder shouldNotBe null
-        createdOrder?.totalAmount shouldBe 300 // Base SHIRT price
+        createdOrder?.totalAmount shouldBe 330 // 300 * 1.1
     }
 
     "createOrder should apply PREMIUM discount for premium members" {
@@ -76,6 +76,6 @@ class OrderServiceIntegrationTest : StringSpec({
         val createdOrder = service.getOrderById(orderId)
 
         createdOrder shouldNotBe null
-        createdOrder?.totalAmount shouldBe 270 // 300 * 0.9
+        createdOrder?.totalAmount shouldBe 297 // 300 * 0.9 * 1.1 = 297
     }
 })
