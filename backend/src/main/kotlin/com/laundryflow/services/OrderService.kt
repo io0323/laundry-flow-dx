@@ -22,6 +22,7 @@ class OrderService {
         const val STAIN_REMOVAL_ADDITION = 500
         const val RUSH_MULTIPLIER = 1.3
         const val PREMIUM_DISCOUNT = 0.9
+        const val TAX_RATE = 1.10 // 10% tax
     }
 
     /**
@@ -114,7 +115,7 @@ class OrderService {
         logger.debug("Customer membership type: {}", membershipType)
 
         val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items, membershipType)
-        logger.info("Calculated total order amount: {} (Membership: {})", calculatedTotalAmount, membershipType)
+        logger.info("Calculated total order amount (incl. tax): {} (Membership: {})", calculatedTotalAmount, membershipType)
 
         val newOrderId = Orders.insertAndGetId {
             it[customerId] = orderReq.customerId
@@ -178,8 +179,9 @@ class OrderService {
      * - +500 per item if Stain Removal is selected.
      * - Then apply Rush order (+30% and truncated to Integer).
      * - Finally apply Membership discount if applicable.
+     * - Finally apply Tax (10%).
      * 
-     * Rule: 加算してから急ぎ割増を適用し、最後に会員割引を適用
+     * Rule: 加算してから急ぎ割増を適用し、最後に会員割引と消費税を適用
      */
     fun calculateItemPrice(category: ItemCategory, quantity: Int, stainRemoval: Boolean, rush: Boolean, membershipType: MembershipType = MembershipType.REGULAR): Int {
         val basePrice = CATEGORY_PRICES[category] ?: 0
@@ -202,6 +204,9 @@ class OrderService {
         if (membershipType == MembershipType.PREMIUM) {
             subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
         }
+
+        // "消費税: 10%加算（端数切り捨て）"
+        subtotal = (subtotal * TAX_RATE).toInt()
         
         return subtotal
     }
@@ -239,9 +244,20 @@ class OrderService {
         if (order.items.any { it.quantity <= 0 }) {
             throw IllegalArgumentException("Quantity must be greater than zero for all items.")
         }
+        
         val targetDate = LocalDate.parse(order.targetDate)
-        if (targetDate.isBefore(LocalDate.now())) {
+        val today = LocalDate.now()
+        
+        if (targetDate.isBefore(today)) {
             throw IllegalArgumentException("Target date cannot be in the past.")
+        }
+
+        val hasRush = order.items.any { it.rush }
+        val minTargetDate = calculateDefaultTargetDate(today, hasRush)
+        
+        if (targetDate.isBefore(minTargetDate)) {
+            val minDays = if (hasRush) 1 else 3
+            throw IllegalArgumentException("Target date must be at least $minDays day(s) from today ($minTargetDate) for ${if (hasRush) "rush" else "regular"} orders.")
         }
     }
 }
