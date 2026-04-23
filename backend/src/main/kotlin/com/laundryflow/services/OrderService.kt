@@ -11,19 +11,8 @@ import java.time.LocalDateTime
 class OrderService {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
     
-    companion object {
-        val CATEGORY_PRICES = mapOf(
-            ItemCategory.SHIRT to 300,
-            ItemCategory.SUIT to 1500,
-            ItemCategory.COAT to 2000,
-            ItemCategory.DRESS to 1800,
-            ItemCategory.BLANKET to 2500
-        )
-        const val STAIN_REMOVAL_ADDITION = 500
-        const val RUSH_MULTIPLIER = 1.3
-        const val PREMIUM_DISCOUNT = 0.9
-        const val TAX_RATE = 1.10 // 10% tax
-    }
+    // Logic moved to PriceCalculator
+
 
     /**
      * Gets all orders from the database.
@@ -104,44 +93,48 @@ class OrderService {
 
     fun createOrder(orderReq: Order): Int = transaction {
         logger.info("Creating order for customer ID: {}", orderReq.customerId)
+        
         // Validation
         validateOrder(orderReq)
 
-        // Fetch customer to get membership type for correct price calculation
+        // Fetch customer to get membership type
         val customerRow = Customers.select { Customers.id eq orderReq.customerId }.firstOrNull()
             ?: throw IllegalArgumentException("Customer does not exist with ID: ${orderReq.customerId}")
         
         val membershipType = MembershipType.fromString(customerRow[Customers.membershipType])
         logger.debug("Customer membership type: {}", membershipType)
 
-        val calculatedTotalAmount = calculateTotalOrderPrice(orderReq.items, membershipType)
-        logger.info("Calculated total order amount (incl. tax): {} (Membership: {})", calculatedTotalAmount, membershipType)
+        // Calculate and insert order items first to ensure we have subtotals
+        val itemCalculations = orderReq.items.map { item ->
+            val subtotal = PriceCalculator.calculateItemPrice(
+                item.category, item.quantity, item.stainRemoval, item.rush, membershipType
+            )
+            item to subtotal
+        }
+
+        val calculatedTotal = itemCalculations.sumOf { it.second }
+        logger.info("Total order amount: {} (Membership: {})", calculatedTotal, membershipType)
 
         val newOrderId = Orders.insertAndGetId {
             it[customerId] = orderReq.customerId
             it[receivedDate] = LocalDateTime.now()
             it[targetDate] = LocalDate.parse(orderReq.targetDate)
             it[status] = OrderStatus.RECEIVED.toString()
-            it[totalAmount] = calculatedTotalAmount
+            it[totalAmount] = calculatedTotal
             it[notes] = orderReq.notes
         }.value
         
-        orderReq.items.forEach { item ->
-            val calculatedSubtotal = calculateItemPrice(
-                item.category, item.quantity, item.stainRemoval, item.rush, membershipType
-            )
-            logger.debug("Item calculation: {} x {} (Stain: {}, Rush: {}) -> {}", 
-                item.category, item.quantity, item.stainRemoval, item.rush, calculatedSubtotal)
-
+        itemCalculations.forEach { (item, subtotal) ->
             OrderItems.insert {
                 it[orderId] = newOrderId
                 it[category] = item.category.toString()
                 it[quantity] = item.quantity
                 it[stainRemoval] = item.stainRemoval
                 it[rush] = item.rush
-                it[subtotalPrice] = calculatedSubtotal
+                it[subtotalPrice] = subtotal
             }
         }
+        
         logger.info("Order created successfully with ID: {}", newOrderId)
         newOrderId
     }
@@ -166,6 +159,14 @@ class OrderService {
     }
 
     /**
+     * Cancels an order.
+     * Only possible if the order is in RECEIVED status.
+     */
+    fun cancelOrder(id: Int) {
+        updateOrderStatus(id, OrderStatus.CANCELLED)
+    }
+
+    /**
      * Deletes an order and its items.
      */
     fun deleteOrder(id: Int) = transaction {
@@ -184,40 +185,14 @@ class OrderService {
      * Rule: 加算してから急ぎ割増を適用し、最後に会員割引と消費税を適用
      */
     fun calculateItemPrice(category: ItemCategory, quantity: Int, stainRemoval: Boolean, rush: Boolean, membershipType: MembershipType = MembershipType.REGULAR): Int {
-        val basePrice = CATEGORY_PRICES[category] ?: 0
-        
-        var unitPrice = basePrice
-        
-        // "シミ抜き: 基本料金 + 500円（数量分）"
-        if (stainRemoval) {
-            unitPrice += STAIN_REMOVAL_ADDITION
-        }
-        
-        var subtotal = unitPrice * quantity
-        
-        // "急ぎ: 上記小計 × 1.3（端数切り捨て）"
-        if (rush) {
-            subtotal = (subtotal * RUSH_MULTIPLIER).toInt()
-        }
-
-        // "会員割引: Premium会員は10%引き（端数切り捨て）"
-        if (membershipType == MembershipType.PREMIUM) {
-            subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
-        }
-
-        // "消費税: 10%加算（端数切り捨て）"
-        subtotal = (subtotal * TAX_RATE).toInt()
-        
-        return subtotal
+        return PriceCalculator.calculateItemPrice(category, quantity, stainRemoval, rush, membershipType)
     }
 
     /**
      * Calculates the total price for an entire order.
      */
     fun calculateTotalOrderPrice(items: List<OrderItem>, membershipType: MembershipType = MembershipType.REGULAR): Int {
-        return items.sumOf { item ->
-            calculateItemPrice(item.category, item.quantity, item.stainRemoval, item.rush, membershipType)
-        }
+        return PriceCalculator.calculateTotalOrderPrice(items, membershipType)
     }
     
     /**

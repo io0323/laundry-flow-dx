@@ -25,7 +25,8 @@ enum class OrderStatus {
     @SerialName("Washing") WASHING,
     @SerialName("Finishing") FINISHING,
     @SerialName("WaitingForPickup") WAITING_FOR_PICKUP,
-    @SerialName("Completed") COMPLETED;
+    @SerialName("Completed") COMPLETED,
+    @SerialName("Cancelled") CANCELLED;
 
     companion object {
         fun fromString(value: String): OrderStatus = fromStringOrNull(value) ?: RECEIVED
@@ -35,11 +36,12 @@ enum class OrderStatus {
     fun canTransitionTo(next: OrderStatus): Boolean {
         if (this == next) return true // Allow same status (idempotent)
         return when (this) {
-            RECEIVED -> next == WASHING
+            RECEIVED -> next == WASHING || next == CANCELLED
             WASHING -> next == FINISHING
             FINISHING -> next == WAITING_FOR_PICKUP
             WAITING_FOR_PICKUP -> next == COMPLETED
             COMPLETED -> false
+            CANCELLED -> false
         }
     }
 
@@ -49,6 +51,7 @@ enum class OrderStatus {
         FINISHING -> "Finishing"
         WAITING_FOR_PICKUP -> "WaitingForPickup"
         COMPLETED -> "Completed"
+        CANCELLED -> "Cancelled"
     }
 }
 

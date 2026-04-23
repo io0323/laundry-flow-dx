@@ -78,4 +78,52 @@ class OrderServiceIntegrationTest : StringSpec({
         createdOrder shouldNotBe null
         createdOrder?.totalAmount shouldBe 297 // 300 * 0.9 * 1.1 = 297
     }
+
+    "cancelOrder should update status to CANCELLED for RECEIVED orders" {
+        val customerId = transaction {
+            Customers.insert {
+                it[name] = "Cancel User"
+                it[phoneNumber] = "000-0000"
+                it[address] = "Cancel St"
+                it[membershipType] = MembershipType.REGULAR.toString()
+            }[Customers.id].value
+        }
+
+        val orderId = service.createOrder(Order(
+            customerId = customerId,
+            targetDate = LocalDate.now().plusDays(3).toString(),
+            status = OrderStatus.RECEIVED,
+            totalAmount = 0,
+            items = listOf(OrderItem(category = ItemCategory.SHIRT, quantity = 1, subtotalPrice = 0))
+        ))
+
+        service.cancelOrder(orderId)
+        val cancelledOrder = service.getOrderById(orderId)
+        cancelledOrder?.status shouldBe OrderStatus.CANCELLED
+    }
+
+    "cancelOrder should throw exception for orders in WASHING status" {
+        val customerId = transaction {
+            Customers.insert {
+                it[name] = "Washing User"
+                it[phoneNumber] = "111-1111"
+                it[address] = "Washing St"
+                it[membershipType] = MembershipType.REGULAR.toString()
+            }[Customers.id].value
+        }
+
+        val orderId = service.createOrder(Order(
+            customerId = customerId,
+            targetDate = LocalDate.now().plusDays(3).toString(),
+            status = OrderStatus.RECEIVED,
+            totalAmount = 0,
+            items = listOf(OrderItem(category = ItemCategory.SHIRT, quantity = 1, subtotalPrice = 0))
+        ))
+
+        service.updateOrderStatus(orderId, OrderStatus.WASHING)
+        
+        io.kotest.assertions.throwables.shouldThrow<IllegalStateException> {
+            service.cancelOrder(orderId)
+        }
+    }
 })

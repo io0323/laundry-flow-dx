@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock, FileText } from 'lucide-react';
+import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock, FileText, XCircle } from 'lucide-react';
 
 const OrderDetailsModal = ({ orderId, onClose }) => {
     const [order, setOrder] = useState(null);
@@ -21,6 +21,22 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
             console.error('Failed to fetch order details:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleCancelOrder = async () => {
+        if (window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+            try {
+                const success = await api.updateOrderStatus(orderId, 'Cancelled');
+                if (success) {
+                    fetchOrderDetails();
+                } else {
+                    alert('Failed to cancel order.');
+                }
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                alert('Error cancelling order: ' + error.message);
+            }
         }
     };
 
@@ -124,6 +140,16 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                                 </table>
                             </div>
                         </div>
+
+                        {order.status === 'Received' && (
+                            <div className="modal-actions">
+                                <button className="btn btn-danger" onClick={handleCancelOrder}>
+                                    <XCircle size={18} />
+                                    Cancel Order
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     </div>
                 ) : (
                     <div className="modal-error">
@@ -247,6 +273,21 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                 }
                 .items-table-container tr:last-child td {
                     border-bottom: none;
+                }
+                .modal-actions {
+                    margin-top: 2.5rem;
+                    display: flex;
+                    justify-content: flex-end;
+                    border-top: 1px solid #f1f5f9;
+                    padding-top: 1.5rem;
+                }
+                .btn-danger {
+                    background-color: #fee2e2;
+                    color: #ef4444;
+                }
+                .btn-danger:hover {
+                    background-color: #fecaca;
+                    color: #dc2626;
                 }
                 .modal-loading {
                     display: flex;

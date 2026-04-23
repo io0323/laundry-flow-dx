@@ -27,12 +27,30 @@ const Orders = () => {
 
     const handleStatusUpdate = async (e, id, currentStatus) => {
         e.stopPropagation();
+        if (currentStatus === 'Cancelled') {
+            alert('Cannot update status of a cancelled order.');
+            return;
+        }
+        if (currentStatus === 'Completed') {
+            return; // Already completed
+        }
+
         const statuses = ['Received', 'Washing', 'Finishing', 'WaitingForPickup', 'Completed'];
         const currentIndex = statuses.indexOf(currentStatus);
-        const nextStatus = statuses[(currentIndex + 1) % statuses.length];
         
-        await api.updateOrderStatus(id, nextStatus);
-        loadOrders();
+        if (currentIndex === -1 || currentIndex === statuses.length - 1) return;
+        
+        const nextStatus = statuses[currentIndex + 1];
+        
+        try {
+            const success = await api.updateOrderStatus(id, nextStatus);
+            if (success) {
+                loadOrders();
+            }
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            alert('Failed to update status: ' + error.message);
+        }
     };
 
     const handleDelete = async (e, id) => {
@@ -81,6 +99,7 @@ const Orders = () => {
                             <option value="Finishing">Finishing</option>
                             <option value="WaitingForPickup">Waiting For Pickup</option>
                             <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
                         </select>
                     </div>
                     <button className="btn" onClick={loadOrders} disabled={isLoading}>
@@ -125,8 +144,14 @@ const Orders = () => {
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button 
                                             className="btn btn-primary" 
-                                            style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
+                                            style={{ 
+                                                fontSize: '0.75rem', 
+                                                padding: '0.4rem 0.8rem',
+                                                opacity: (o.status === 'Completed' || o.status === 'Cancelled') ? 0.5 : 1,
+                                                cursor: (o.status === 'Completed' || o.status === 'Cancelled') ? 'not-allowed' : 'pointer'
+                                            }}
                                             onClick={(e) => handleStatusUpdate(e, o.id, o.status)}
+                                            disabled={o.status === 'Completed' || o.status === 'Cancelled'}
                                         >
                                             Update Status
                                         </button>
