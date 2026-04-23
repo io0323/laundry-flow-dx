@@ -179,11 +179,13 @@ tr:last-child td {
   font-weight: 600;
 }
 
-.status-received { background-color: #e2e8f0; color: #475569; }
+.status-received { background-color: #f1f5f9; color: #64748b; }
 .status-washing { background-color: #dbeafe; color: #2563eb; }
 .status-finishing { background-color: #fef3c7; color: #d97706; }
+.status-waitingforpickup { background-color: #dcfce7; color: #16a34a; }
 .status-pickup { background-color: #dcfce7; color: #16a34a; }
 .status-completed { background-color: #10b981; color: white; }
+.status-cancelled { background-color: #fee2e2; color: #ef4444; }
 
 /* Buttons & Inputs */
 .btn {
