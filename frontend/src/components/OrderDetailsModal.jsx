@@ -90,6 +90,12 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                                 <div>
                                     <label>Total Amount</label>
                                     <p className="total-value">¥{order.totalAmount.toLocaleString()}</p>
+                                    {order.discountAmount > 0 && (
+                                        <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                                            Discount Applied: -¥{order.discountAmount.toLocaleString()}
+                                            {order.promoCode && ` (Code: ${order.promoCode})`}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

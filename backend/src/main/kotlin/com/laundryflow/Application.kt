@@ -29,7 +29,7 @@ fun Application.module() {
     
     // Auto-migrate tables
     transaction {
-        SchemaUtils.create(Customers, Orders, OrderItems)
+        SchemaUtils.createMissingTablesAndColumns(Customers, Orders, OrderItems)
     }
 
     // 2. Configure Plugins

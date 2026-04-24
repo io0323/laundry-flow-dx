@@ -49,4 +49,58 @@ class PriceCalculatorTest : StringSpec({
         // Total: 1980
         PriceCalculator.calculateTotalOrderPrice(items, MembershipType.REGULAR) shouldBe 1980
     }
+
+    "calculateOrderTotal should apply volume discount for 5+ items" {
+        val items = listOf(
+            com.laundryflow.models.OrderItem(category = ItemCategory.SHIRT, quantity = 5, subtotalPrice = 0)
+        )
+        // Pre-tax: 300 * 5 = 1500
+        // Volume Discount (5%): 1500 * 0.95 = 1425
+        // Tax (10%): 1425 * 0.1 = 142
+        // Total: 1425 + 142 = 1567
+        val calc = PriceCalculator.calculateOrderTotal(items, MembershipType.REGULAR)
+        calc.volumeDiscount shouldBe 75
+        calc.total shouldBe 1567
+    }
+
+    "calculateOrderTotal should apply volume discount for 10+ items" {
+        val items = listOf(
+            com.laundryflow.models.OrderItem(category = ItemCategory.SHIRT, quantity = 10, subtotalPrice = 0)
+        )
+        // Pre-tax: 300 * 10 = 3000
+        // Volume Discount (10%): 3000 * 0.90 = 2700
+        // Tax (10%): 2700 * 0.1 = 270
+        // Total: 2700 + 270 = 2970
+        val calc = PriceCalculator.calculateOrderTotal(items, MembershipType.REGULAR)
+        calc.volumeDiscount shouldBe 300
+        calc.total shouldBe 2970
+    }
+
+    "calculateOrderTotal should apply promo code WELCOME10" {
+        val items = listOf(
+            com.laundryflow.models.OrderItem(category = ItemCategory.SHIRT, quantity = 1, subtotalPrice = 0)
+        )
+        // Pre-tax: 300
+        // Promo (10%): 300 * 0.9 = 270
+        // Tax (10%): 270 * 0.1 = 27
+        // Total: 270 + 27 = 297
+        val calc = PriceCalculator.calculateOrderTotal(items, MembershipType.REGULAR, "WELCOME10")
+        calc.promoDiscount shouldBe 30
+        calc.total shouldBe 297
+    }
+
+    "calculateOrderTotal should apply multiple discounts correctly" {
+        val items = listOf(
+            com.laundryflow.models.OrderItem(category = ItemCategory.SHIRT, quantity = 5, subtotalPrice = 0)
+        )
+        // Pre-tax: 300 * 5 = 1500
+        // Volume (5%): 1500 * 0.95 = 1425
+        // Promo (10%): 1425 * 0.9 = 1282.5 -> 1282
+        // Tax (10%): 1282 * 0.1 = 128
+        // Total: 1282 + 128 = 1410
+        val calc = PriceCalculator.calculateOrderTotal(items, MembershipType.REGULAR, "WELCOME10")
+        calc.volumeDiscount shouldBe 75
+        calc.promoDiscount shouldBe 143
+        calc.total shouldBe 1410
+    }
 })
