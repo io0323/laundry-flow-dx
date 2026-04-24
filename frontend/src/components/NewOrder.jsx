@@ -17,6 +17,7 @@ const NewOrder = ({ onComplete }) => {
     const [targetDate, setTargetDate] = useState('');
     const [isCustomTargetDate, setIsCustomTargetDate] = useState(false);
     const [notes, setNotes] = useState('');
+    const [promoCode, setPromoCode] = useState('');
 
     useEffect(() => {
         api.getCustomers().then(setCustomers);
@@ -41,19 +42,60 @@ const NewOrder = ({ onComplete }) => {
         return customers.find(c => c.id === parseInt(selectedCustomerId));
     };
 
+    const calculateSummary = () => {
+        const customer = getSelectedCustomer();
+        const membershipType = customer?.membershipType || 'Regular';
+        
+        // 1. Calculate pre-tax subtotal (including membership discount)
+        const itemsPreTax = items.reduce((sum, item) => {
+            const basePrice = CATEGORIES.find(c => c.name === item.category)?.price || 0;
+            let unitPrice = basePrice;
+            if (item.stainRemoval) unitPrice += 500;
+            let sub = unitPrice * item.quantity;
+            if (item.rush) sub = Math.floor(sub * 1.3);
+            if (membershipType === 'Premium') sub = Math.floor(sub * 0.9);
+            return sum + sub;
+        }, 0);
+
+        // 2. Volume Discount
+        const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0);
+        let volumeDiscountRate = 1.0;
+        if (totalQuantity >= 10) volumeDiscountRate = 0.90;
+        else if (totalQuantity >= 5) volumeDiscountRate = 0.95;
+        
+        const afterVolumeDiscount = Math.floor(itemsPreTax * volumeDiscountRate);
+        const volumeDiscountAmount = itemsPreTax - afterVolumeDiscount;
+
+        // 3. Promo Code Discount
+        const PROMOS = { 'WELCOME10': 0.90, 'SPRING20': 0.80 };
+        const promoDiscountRate = PROMOS[promoCode.toUpperCase()] || 1.0;
+        const afterPromoDiscount = Math.floor(afterVolumeDiscount * promoDiscountRate);
+        const promoDiscountAmount = afterVolumeDiscount - afterPromoDiscount;
+
+        // 4. Tax
+        const tax = Math.floor(afterPromoDiscount * 0.10);
+        const finalTotal = afterPromoDiscount + tax;
+
+        return {
+            subtotal: itemsPreTax,
+            volumeDiscount: volumeDiscountAmount,
+            promoDiscount: promoDiscountAmount,
+            tax,
+            total: finalTotal,
+            totalQuantity
+        };
+    };
+
+    const summary = calculateSummary();
+
     const calculateItemPrice = (item, membershipType = 'Regular') => {
         const basePrice = CATEGORIES.find(c => c.name === item.category)?.price || 0;
         let unitPrice = basePrice;
         if (item.stainRemoval) unitPrice += 500;
         let subtotal = unitPrice * item.quantity;
         if (item.rush) subtotal = Math.floor(subtotal * 1.3);
-        
-        // Apply Premium discount
-        if (membershipType === 'Premium') {
-            subtotal = Math.floor(subtotal * 0.9);
-        }
-        
-        return subtotal;
+        if (membershipType === 'Premium') subtotal = Math.floor(subtotal * 0.9);
+        return Math.floor(subtotal * 1.1); // Item subtotal in list includes tax for consistency
     };
 
     const updateItem = (index, updates) => {
@@ -65,7 +107,7 @@ const NewOrder = ({ onComplete }) => {
         setItems(newItems);
     };
 
-    // Recalculate all items when customer changes to reflect membership discount
+    // Recalculate all items when customer changes
     useEffect(() => {
         const membershipType = getSelectedCustomer()?.membershipType || 'Regular';
         const newItems = items.map(item => ({
@@ -86,8 +128,6 @@ const NewOrder = ({ onComplete }) => {
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const totalAmount = items.reduce((sum, i) => sum + i.subtotalPrice, 0);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedCustomerId) return alert('Please select a customer');
@@ -97,7 +137,8 @@ const NewOrder = ({ onComplete }) => {
                 customerId: parseInt(selectedCustomerId),
                 targetDate: targetDate,
                 status: 'Received',
-                totalAmount: totalAmount,
+                totalAmount: summary.total,
+                promoCode: promoCode || null,
                 notes: notes,
                 items: items
             });
@@ -129,6 +170,11 @@ const NewOrder = ({ onComplete }) => {
                                     <option key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</option>
                                 ))}
                             </select>
+                            {getSelectedCustomer()?.membershipType === 'Premium' && (
+                                <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.25rem', fontWeight: 600 }}>
+                                    Premium Member: 10% Discount Applied
+                                </div>
+                            )}
                         </div>
                         <div className="input-group">
                             <label>Target Delivery Date</label>
@@ -143,22 +189,43 @@ const NewOrder = ({ onComplete }) => {
                         </div>
                     </div>
 
-                    <div className="input-group" style={{ marginBottom: '2rem' }}>
-                        <label>Notes / Special Instructions</label>
-                        <textarea 
-                            placeholder="Add any special instructions here..."
-                            value={notes}
-                            onChange={e => setNotes(e.target.value)}
-                            style={{ 
-                                width: '100%', 
-                                minHeight: '80px', 
-                                padding: '0.75rem', 
-                                borderRadius: '8px', 
-                                border: '1px solid #e2e8f0',
-                                fontFamily: 'inherit',
-                                fontSize: '0.875rem'
-                            }}
-                        />
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div className="input-group">
+                            <label>Notes / Special Instructions</label>
+                            <textarea 
+                                placeholder="Add any special instructions here..."
+                                value={notes}
+                                onChange={e => setNotes(e.target.value)}
+                                style={{ 
+                                    width: '100%', 
+                                    minHeight: '80px', 
+                                    padding: '0.75rem', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid #e2e8f0',
+                                    fontFamily: 'inherit',
+                                    fontSize: '0.875rem'
+                                }}
+                            />
+                        </div>
+                        <div className="input-group">
+                            <label>Promotion Code</label>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. WELCOME10"
+                                value={promoCode}
+                                onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                                style={{ textTransform: 'uppercase' }}
+                            />
+                            {promoCode && (summary.promoDiscount > 0 ? (
+                                <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.25rem', fontWeight: 600 }}>
+                                    Code applied!
+                                </div>
+                            ) : (
+                                <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>
+                                    Invalid or inactive code
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <h3 style={{ marginBottom: '1.5rem', fontWeight: 700 }}>Order Items</h3>
@@ -170,7 +237,7 @@ const NewOrder = ({ onComplete }) => {
                                     <th>Qty</th>
                                     <th>Stain Removal</th>
                                     <th>Rush</th>
-                                    <th>Subtotal</th>
+                                    <th>Subtotal (Inc. Tax)</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -225,35 +292,69 @@ const NewOrder = ({ onComplete }) => {
                         </table>
                     </div>
 
-                    <button type="button" className="btn" onClick={addItem}>
+                    <button type="button" className="btn" onClick={addItem} style={{ marginBottom: '2rem' }}>
                         <Plus size={18} /> Add Item
                     </button>
 
-                    <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Total Amount</span>
-                            <h2 style={{ fontSize: '2rem', color: '#1e293b' }}>
-                                ¥{totalAmount.toLocaleString()}
-                                {getSelectedCustomer()?.membershipType === 'Premium' && (
-                                    <span style={{ 
-                                        fontSize: '0.875rem', 
-                                        color: '#059669', 
-                                        background: '#ecfdf5', 
-                                        padding: '0.25rem 0.75rem', 
-                                        borderRadius: '9999px',
-                                        marginLeft: '1rem',
-                                        verticalAlign: 'middle',
-                                        fontWeight: 600
-                                    }}>
-                                        Premium Discount (10% OFF) Applied
-                                    </span>
+                    <div style={{ padding: '2rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
+                            <div style={{ color: '#64748b' }}>
+                                <h4 style={{ color: '#1e293b', marginBottom: '1rem' }}>Order Summary</h4>
+                                <div style={{ fontSize: '0.875rem', lineHeight: '1.8' }}>
+                                    {summary.totalQuantity >= 5 && (
+                                        <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '8px', height: '8px', background: '#059669', borderRadius: '50%' }}></div>
+                                            Volume Discount Applied ({summary.totalQuantity >= 10 ? '10%' : '5%'} OFF)
+                                        </div>
+                                    )}
+                                    {summary.promoDiscount > 0 && (
+                                        <div style={{ color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '8px', height: '8px', background: '#6366f1', borderRadius: '50%' }}></div>
+                                            Promo Code Discount Applied
+                                        </div>
+                                    )}
+                                    {getSelectedCustomer()?.membershipType === 'Premium' && (
+                                        <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '8px', height: '8px', background: '#059669', borderRadius: '50%' }}></div>
+                                            Premium Membership Discount Included
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', color: '#64748b' }}>
+                                    <span>Subtotal</span>
+                                    <span>¥{summary.subtotal.toLocaleString()}</span>
+                                </div>
+                                {summary.volumeDiscount > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', color: '#059669' }}>
+                                        <span>Volume Discount</span>
+                                        <span>-¥{summary.volumeDiscount.toLocaleString()}</span>
+                                    </div>
                                 )}
-                            </h2>
+                                {summary.promoDiscount > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', color: '#6366f1' }}>
+                                        <span>Promo Discount</span>
+                                        <span>-¥{summary.promoDiscount.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', color: '#64748b' }}>
+                                    <span>Tax (10%)</span>
+                                    <span>¥{summary.tax.toLocaleString()}</span>
+                                </div>
+                                <div style={{ height: '1px', background: '#e2e8f0', margin: '1rem 0' }}></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 700, color: '#1e293b' }}>Total</span>
+                                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#6366f1' }}>
+                                        ¥{summary.total.toLocaleString()}
+                                    </span>
+                                </div>
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', padding: '1rem', fontSize: '1.1rem' }}>
+                                    <ShoppingCart size={20} />
+                                    Place Order
+                                </button>
+                            </div>
                         </div>
-                        <button type="submit" className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                            <ShoppingCart size={20} />
-                            Place Order
-                        </button>
                     </div>
                 </form>
             </div>

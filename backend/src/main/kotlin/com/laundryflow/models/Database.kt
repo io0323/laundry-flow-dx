@@ -19,6 +19,8 @@ object Orders : IntIdTable() {
     val targetDate = date("target_date") // Default 3 days later, handled in service
     val status = varchar("status", 50) // e.g. Received, Washing, Finishing, WaitingForPickup, Completed
     val totalAmount = integer("total_amount")
+    val discountAmount = integer("discount_amount").default(0)
+    val promoCode = varchar("promo_code", 50).nullable()
     val notes = varchar("notes", 1000).nullable()
 }
 

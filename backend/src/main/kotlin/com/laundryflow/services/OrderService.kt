@@ -49,6 +49,8 @@ class OrderService {
                 targetDate = row[Orders.targetDate].toString(),
                 status = OrderStatus.fromString(row[Orders.status]),
                 totalAmount = row[Orders.totalAmount],
+                discountAmount = row[Orders.discountAmount],
+                promoCode = row[Orders.promoCode],
                 hasRush = itemsForOrder.any { it[OrderItems.rush] },
                 hasStainRemoval = itemsForOrder.any { it[OrderItems.stainRemoval] },
                 notes = row[Orders.notes]
@@ -84,6 +86,8 @@ class OrderService {
             targetDate = orderRow[Orders.targetDate].toString(),
             status = OrderStatus.fromString(orderRow[Orders.status]),
             totalAmount = orderRow[Orders.totalAmount],
+            discountAmount = orderRow[Orders.discountAmount],
+            promoCode = orderRow[Orders.promoCode],
             hasRush = items.any { it.rush },
             hasStainRemoval = items.any { it.stainRemoval },
             notes = orderRow[Orders.notes],
@@ -112,15 +116,19 @@ class OrderService {
             item to subtotal
         }
 
-        val calculatedTotal = itemCalculations.sumOf { it.second }
-        logger.info("Total order amount: {} (Membership: {})", calculatedTotal, membershipType)
+        val calculation = PriceCalculator.calculateOrderTotal(
+            orderReq.items, membershipType, orderReq.promoCode
+        )
+        logger.info("Total order amount: {} (Membership: {}, Promo: {})", calculation.total, membershipType, orderReq.promoCode)
 
         val newOrderId = Orders.insertAndGetId {
             it[customerId] = orderReq.customerId
             it[receivedDate] = LocalDateTime.now()
             it[targetDate] = LocalDate.parse(orderReq.targetDate)
             it[status] = OrderStatus.RECEIVED.toString()
-            it[totalAmount] = calculatedTotal
+            it[totalAmount] = calculation.total
+            it[discountAmount] = calculation.volumeDiscount + calculation.promoDiscount
+            it[promoCode] = orderReq.promoCode
             it[notes] = orderReq.notes
         }.value
         

@@ -11,6 +11,8 @@ data class Order(
     val targetDate: String,           // LocalDate as ISO-8601 string
     val status: OrderStatus,
     val totalAmount: Int,
+    val discountAmount: Int = 0,
+    val promoCode: String? = null,
     val hasRush: Boolean = false,
     val hasStainRemoval: Boolean = false,
     val notes: String? = null,

@@ -18,8 +18,30 @@ object PriceCalculator {
     const val PREMIUM_DISCOUNT = 0.9
     const val TAX_RATE = 1.10 // 10% tax
 
+    // Volume Discounts
+    const val VOLUME_THRESHOLD_1 = 5
+    const val VOLUME_DISCOUNT_1 = 0.95 // 5% off
+    const val VOLUME_THRESHOLD_2 = 10
+    const val VOLUME_DISCOUNT_2 = 0.90 // 10% off
+
+    // Promotion Codes
+    val PROMO_CODES = mapOf(
+        "WELCOME10" to 0.90, // 10% off
+        "SPRING20" to 0.80  // 20% off
+    )
+
+    data class OrderCalculation(
+        val subtotal: Int,
+        val volumeDiscount: Int,
+        val promoDiscount: Int,
+        val tax: Int,
+        val total: Int
+    )
+
     /**
      * Calculates the price for an individual item based on business rules.
+     * Note: This returns the price INCLUDING tax for each item if called directly.
+     * However, for total calculation, we should work with pre-tax amounts to avoid rounding errors.
      */
     fun calculateItemPrice(
         category: ItemCategory,
@@ -29,41 +51,85 @@ object PriceCalculator {
         membershipType: MembershipType = MembershipType.REGULAR
     ): Int {
         val basePrice = CATEGORY_PRICES[category] ?: 0
-        
         var unitPrice = basePrice
         
-        // Stain Removal addition per item
         if (stainRemoval) {
             unitPrice += STAIN_REMOVAL_ADDITION
         }
         
         var subtotal = unitPrice * quantity
         
-        // Rush order multiplier (30% increase, floor to integer)
         if (rush) {
             subtotal = (subtotal * RUSH_MULTIPLIER).toInt()
         }
 
-        // Membership discount (10% off for Premium, floor to integer)
         if (membershipType == MembershipType.PREMIUM) {
             subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
         }
 
-        // Tax (10% addition, floor to integer)
-        subtotal = (subtotal * TAX_RATE).toInt()
-        
-        return subtotal
+        // Apply tax per item to maintain consistency with existing system
+        return (subtotal * TAX_RATE).toInt()
     }
 
     /**
-     * Calculates the total price for a list of items.
+     * Calculates the total price for a list of items including discounts.
+     */
+    fun calculateOrderTotal(
+        items: List<OrderItem>,
+        membershipType: MembershipType = MembershipType.REGULAR,
+        promoCode: String? = null
+    ): OrderCalculation {
+        // Calculate subtotal (sum of individual item prices BEFORE tax)
+        // Since calculateItemPrice includes tax, we need a way to get pre-tax subtotal.
+        val itemsPreTax = items.sumOf { item ->
+            val basePrice = CATEGORY_PRICES[item.category] ?: 0
+            var unitPrice = basePrice
+            if (item.stainRemoval) unitPrice += STAIN_REMOVAL_ADDITION
+            var sub = unitPrice * item.quantity
+            if (item.rush) sub = (sub * RUSH_MULTIPLIER).toInt()
+            if (membershipType == MembershipType.PREMIUM) sub = (sub * PREMIUM_DISCOUNT).toInt()
+            sub
+        }
+
+        var currentTotal = itemsPreTax.toDouble()
+        
+        // 1. Volume Discount
+        val totalQuantity = items.sumOf { it.quantity }
+        val volumeDiscountRate = when {
+            totalQuantity >= VOLUME_THRESHOLD_2 -> VOLUME_DISCOUNT_2
+            totalQuantity >= VOLUME_THRESHOLD_1 -> VOLUME_DISCOUNT_1
+            else -> 1.0
+        }
+        val afterVolumeDiscountTotal = (itemsPreTax * volumeDiscountRate).toInt()
+        val volumeDiscountAmount = itemsPreTax - afterVolumeDiscountTotal
+        currentTotal = afterVolumeDiscountTotal.toDouble()
+
+        // 2. Promo Code Discount
+        val promoDiscountRate = PROMO_CODES[promoCode?.uppercase()] ?: 1.0
+        val afterPromoDiscountTotal = (currentTotal * promoDiscountRate).toInt()
+        val promoDiscountAmount = currentTotal.toInt() - afterPromoDiscountTotal
+        currentTotal = afterPromoDiscountTotal.toDouble()
+
+        // 3. Tax
+        val finalTax = (currentTotal * 0.10).toInt()
+        val finalTotal = currentTotal.toInt() + finalTax
+
+        return OrderCalculation(
+            subtotal = itemsPreTax,
+            volumeDiscount = volumeDiscountAmount,
+            promoDiscount = promoDiscountAmount,
+            tax = finalTax,
+            total = finalTotal
+        )
+    }
+
+    /**
+     * Legacy method for backward compatibility
      */
     fun calculateTotalOrderPrice(
         items: List<OrderItem>,
         membershipType: MembershipType = MembershipType.REGULAR
     ): Int {
-        return items.sumOf { item ->
-            calculateItemPrice(item.category, item.quantity, item.stainRemoval, item.rush, membershipType)
-        }
+        return calculateOrderTotal(items, membershipType).total
     }
 }
