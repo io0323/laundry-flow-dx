@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock, FileText, XCircle } from 'lucide-react';
+import { X, Calendar, User, Tag, Zap, Droplets, ReceiptText, Clock, FileText, XCircle, ArrowRight, CheckCircle } from 'lucide-react';
 
 const OrderDetailsModal = ({ orderId, onClose }) => {
     const [order, setOrder] = useState(null);
@@ -24,20 +24,62 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
         }
     };
 
-    const handleCancelOrder = async () => {
-        if (window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+    const handleStatusUpdate = async (nextStatus) => {
+        const statusLabel = nextStatus.replace(/([A-Z])/g, ' $1').trim();
+        if (window.confirm(`Are you sure you want to change status to ${statusLabel}?`)) {
             try {
-                const success = await api.updateOrderStatus(orderId, 'Cancelled');
+                setIsLoading(true);
+                const success = await api.updateOrderStatus(orderId, nextStatus);
                 if (success) {
-                    fetchOrderDetails();
+                    await fetchOrderDetails();
                 } else {
-                    alert('Failed to cancel order.');
+                    alert('Failed to update status.');
                 }
             } catch (error) {
-                console.error('Error cancelling order:', error);
-                alert('Error cancelling order: ' + error.message);
+                console.error('Error updating status:', error);
+                alert('Error updating status: ' + error.message);
+            } finally {
+                setIsLoading(false);
             }
         }
+    };
+
+    const handleCancelOrder = () => handleStatusUpdate('Cancelled');
+
+    const statusFlow = ['Received', 'Washing', 'Finishing', 'WaitingForPickup', 'Completed'];
+    const currentStatusIndex = statusFlow.indexOf(order?.status);
+    const nextStatus = currentStatusIndex !== -1 && currentStatusIndex < statusFlow.length - 1 
+        ? statusFlow[currentStatusIndex + 1] 
+        : null;
+
+    const StatusStepper = ({ currentStatus }) => {
+        if (currentStatus === 'Cancelled') {
+            return (
+                <div className="status-stepper-cancelled">
+                    <XCircle size={20} color="#ef4444" />
+                    <span>Order Cancelled</span>
+                </div>
+            );
+        }
+
+        return (
+            <div className="status-stepper">
+                {statusFlow.map((step, idx) => {
+                    const isCompleted = statusFlow.indexOf(currentStatus) > idx;
+                    const isActive = currentStatus === step;
+                    
+                    return (
+                        <div key={step} className={`step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                            <div className="step-dot">
+                                {isCompleted ? <CheckCircle size={14} /> : <span>{idx + 1}</span>}
+                            </div>
+                            <div className="step-label">{step.replace(/([A-Z])/g, ' $1').trim()}</div>
+                            {idx < statusFlow.length - 1 && <div className="step-line" />}
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
     if (!orderId) return null;
@@ -62,6 +104,8 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                                 {order.status}
                             </span>
                         </div>
+
+                        <StatusStepper currentStatus={order.status} />
 
                         <div className="details-grid">
                             <div className="detail-item">
@@ -141,15 +185,21 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                             </div>
                         </div>
 
-                        {order.status === 'Received' && (
-                            <div className="modal-actions">
+                        <div className="modal-actions">
+                            {order.status === 'Received' && (
                                 <button className="btn btn-danger" onClick={handleCancelOrder}>
                                     <XCircle size={18} />
                                     Cancel Order
                                 </button>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                            
+                            {nextStatus && (
+                                <button className="btn btn-primary" onClick={() => handleStatusUpdate(nextStatus)}>
+                                    <ArrowRight size={18} />
+                                    Move to {nextStatus.replace(/([A-Z])/g, ' $1').trim()}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <div className="modal-error">
@@ -172,6 +222,78 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                     justify-content: center;
                     z-index: 1000;
                     animation: fadeIn 0.2s ease-out;
+                }
+                .status-stepper {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 2.5rem;
+                    padding: 0 0.5rem;
+                }
+                .status-stepper-cancelled {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    background-color: #fee2e2;
+                    color: #ef4444;
+                    padding: 0.75rem 1rem;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    margin-bottom: 2.5rem;
+                }
+                .step-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    flex: 1;
+                    position: relative;
+                    gap: 0.5rem;
+                }
+                .step-dot {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 50%;
+                    background-color: #f1f5f9;
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    z-index: 2;
+                    border: 2px solid white;
+                }
+                .step-label {
+                    font-size: 0.65rem;
+                    font-weight: 600;
+                    color: #94a3b8;
+                    text-align: center;
+                }
+                .step-line {
+                    position: absolute;
+                    top: 14px;
+                    left: calc(50% + 14px);
+                    width: calc(100% - 28px);
+                    height: 2px;
+                    background-color: #f1f5f9;
+                    z-index: 1;
+                }
+                .step-item.active .step-dot {
+                    background-color: #6366f1;
+                    color: white;
+                    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+                }
+                .step-item.active .step-label {
+                    color: #6366f1;
+                }
+                .step-item.completed .step-dot {
+                    background-color: #10b981;
+                    color: white;
+                }
+                .step-item.completed .step-label {
+                    color: #10b981;
+                }
+                .step-item.completed .step-line {
+                    background-color: #10b981;
                 }
                 .modal-content {
                     background-color: white;
