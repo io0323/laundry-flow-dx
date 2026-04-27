@@ -155,6 +155,30 @@ const Orders = () => {
                                         >
                                             Update Status
                                         </button>
+                                        {o.status === 'Received' && (
+                                            <button 
+                                                className="btn" 
+                                                style={{ 
+                                                    fontSize: '0.75rem', 
+                                                    padding: '0.4rem 0.8rem',
+                                                    color: '#ef4444',
+                                                    borderColor: '#fca5a5'
+                                                }}
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (window.confirm('Are you sure you want to cancel this order?')) {
+                                                        try {
+                                                            await api.updateOrderStatus(o.id, 'Cancelled');
+                                                            loadOrders();
+                                                        } catch (err) {
+                                                            alert('Failed to cancel order: ' + err.message);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
                                         <button 
                                             className="btn" 
                                             style={{ color: '#64748b', padding: '0.4rem' }}
@@ -235,7 +259,12 @@ const Orders = () => {
                 .order-row:hover {
                     background-color: #f8fafc;
                 }
+                .status-cancelled {
+                    background-color: #fee2e2;
+                    color: #991b1b;
+                }
             `}</style>
+
         </div>
     );
 };

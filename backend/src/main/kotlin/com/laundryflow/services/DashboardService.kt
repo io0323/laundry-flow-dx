@@ -8,7 +8,7 @@ class DashboardService {
 
     fun getDashboardStats(): DashboardStats = transaction {
         val totalOrders = Orders.selectAll().count().toInt()
-        val activeOrders = Orders.select { Orders.status neq OrderStatus.COMPLETED.toString() }.count().toInt()
+        val activeOrders = Orders.select { (Orders.status neq OrderStatus.COMPLETED.toString()) and (Orders.status neq OrderStatus.CANCELLED.toString()) }.count().toInt()
         val pendingOrders = Orders.select { Orders.status eq OrderStatus.RECEIVED.toString() }.count().toInt()
         val urgentOrders = (Orders innerJoin OrderItems)
             .slice(Orders.id)
