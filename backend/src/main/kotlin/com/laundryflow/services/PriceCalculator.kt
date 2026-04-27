@@ -27,7 +27,8 @@ object PriceCalculator {
     // Promotion Codes
     val PROMO_CODES = mapOf(
         "WELCOME10" to 0.90, // 10% off
-        "SPRING20" to 0.80  // 20% off
+        "SPRING20" to 0.80,  // 20% off
+        "SUMMER25" to 0.75   // 25% off
     )
 
     data class OrderCalculation(
@@ -39,16 +40,14 @@ object PriceCalculator {
     )
 
     /**
-     * Calculates the price for an individual item based on business rules.
-     * Note: This returns the price INCLUDING tax for each item if called directly.
-     * However, for total calculation, we should work with pre-tax amounts to avoid rounding errors.
+     * Internal helper to calculate pre-tax price for an item.
      */
-    fun calculateItemPrice(
+    private fun calculateItemPreTaxPrice(
         category: ItemCategory,
         quantity: Int,
         stainRemoval: Boolean,
         rush: Boolean,
-        membershipType: MembershipType = MembershipType.REGULAR
+        membershipType: MembershipType
     ): Int {
         val basePrice = CATEGORY_PRICES[category] ?: 0
         var unitPrice = basePrice
@@ -66,8 +65,22 @@ object PriceCalculator {
         if (membershipType == MembershipType.PREMIUM) {
             subtotal = (subtotal * PREMIUM_DISCOUNT).toInt()
         }
+        
+        return subtotal
+    }
 
-        // Apply tax per item to maintain consistency with existing system
+    /**
+     * Calculates the price for an individual item based on business rules.
+     * Note: This returns the price INCLUDING tax for each item if called directly.
+     */
+    fun calculateItemPrice(
+        category: ItemCategory,
+        quantity: Int,
+        stainRemoval: Boolean,
+        rush: Boolean,
+        membershipType: MembershipType = MembershipType.REGULAR
+    ): Int {
+        val subtotal = calculateItemPreTaxPrice(category, quantity, stainRemoval, rush, membershipType)
         return (subtotal * TAX_RATE).toInt()
     }
 
@@ -80,18 +93,17 @@ object PriceCalculator {
         promoCode: String? = null
     ): OrderCalculation {
         // Calculate subtotal (sum of individual item prices BEFORE tax)
-        // Since calculateItemPrice includes tax, we need a way to get pre-tax subtotal.
         val itemsPreTax = items.sumOf { item ->
-            val basePrice = CATEGORY_PRICES[item.category] ?: 0
-            var unitPrice = basePrice
-            if (item.stainRemoval) unitPrice += STAIN_REMOVAL_ADDITION
-            var sub = unitPrice * item.quantity
-            if (item.rush) sub = (sub * RUSH_MULTIPLIER).toInt()
-            if (membershipType == MembershipType.PREMIUM) sub = (sub * PREMIUM_DISCOUNT).toInt()
-            sub
+            calculateItemPreTaxPrice(
+                item.category,
+                item.quantity,
+                item.stainRemoval,
+                item.rush,
+                membershipType
+            )
         }
 
-        var currentTotal = itemsPreTax.toDouble()
+        var currentTotal: Double
         
         // 1. Volume Discount
         val totalQuantity = items.sumOf { it.quantity }

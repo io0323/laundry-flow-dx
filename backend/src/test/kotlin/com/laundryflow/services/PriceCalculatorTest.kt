@@ -103,4 +103,17 @@ class PriceCalculatorTest : StringSpec({
         calc.promoDiscount shouldBe 143
         calc.total shouldBe 1410
     }
+
+    "calculateOrderTotal should apply SUMMER25 promo code" {
+        val items = listOf(
+            com.laundryflow.models.OrderItem(category = ItemCategory.SHIRT, quantity = 1, subtotalPrice = 0)
+        )
+        // Pre-tax: 300
+        // Promo (25%): 300 * 0.75 = 225
+        // Tax (10%): 225 * 0.1 = 22
+        // Total: 225 + 22 = 247
+        val calc = PriceCalculator.calculateOrderTotal(items, MembershipType.REGULAR, "SUMMER25")
+        calc.promoDiscount shouldBe 75
+        calc.total shouldBe 247
+    }
 })
